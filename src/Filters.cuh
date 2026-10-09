@@ -251,7 +251,7 @@ void *filter3(void *dat) {
 // can match at most one observed position. That bounds what a suffix can find.
 __device__ bool treechunkMatchesSharedPrefixes(Random random, const TreeChunk &chunk, const uint32_t treeCount) {
 	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
-	constexpr uint32_t pendingCapacity = ABSOLUTE_POPULATION_CHUNKS_DATA.getHighestMaxTreeCount();
+	constexpr uint32_t pendingCapacity = 11; // Supported Forest versions permit at most eleven attempts.
 	uint64_t pendingSeeds[pendingCapacity];
 	uint32_t pendingFound[pendingCapacity], pendingLevels[pendingCapacity];
 	uint32_t pendingCount = 0, found = 0, level = 0;

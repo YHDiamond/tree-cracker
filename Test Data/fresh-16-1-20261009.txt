@@ -1,0 +1,5 @@
+# version biome type x z height_min height_max lowest/middle/highest NW,SW,NE,SE
+1.16.1 Forest Birch 7 26 5 5 110010000011
+1.16.1 Forest Birch 4 19 6 6 011011101010
+1.16.1 Forest Birch 15 24 7 7 010101101110
+1.16.1 Forest Birch 9 35 7 7 101110010000

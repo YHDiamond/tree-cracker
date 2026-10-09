@@ -77,7 +77,7 @@ __host__ __device__ constexpr const char *toString(const TreeType treetype) {
 
 // TODO: Replace copies of treechunks with pointers to INPUT_DATA so it's not so large?
 struct SetOfTreeChunks {
-	TreeChunk treeChunks[sizeof(INPUT_DATA)/sizeof(*INPUT_DATA)];
+	TreeChunk *treeChunks;
 	uint32_t numberOfTreeChunks;
 	bool collapseNearbySeedsFlag;
 
@@ -85,12 +85,12 @@ struct SetOfTreeChunks {
 		treeChunks{},
 		numberOfTreeChunks(),
 		collapseNearbySeedsFlag(false) {}
-	__device__ constexpr SetOfTreeChunks(const InputData data[], const size_t numberOfTreesInData) :
-		treeChunks{},
+	__device__ constexpr SetOfTreeChunks(const InputData data[], const size_t numberOfTreesInData, TreeChunk *storage) :
+		treeChunks(storage),
 		numberOfTreeChunks(0),
 		collapseNearbySeedsFlag(false) {
 		// For each tree in the input:
-		for (size_t i = 0; i < constexprMin(numberOfTreesInData, sizeof(treeChunks)/sizeof(*treeChunks)); ++i) {
+		for (size_t i = 0; i < numberOfTreesInData; ++i) {
 			int32_t treePopulationChunkX = getPopulationChunkCoordinate(data[i].coordinate.x, data[i].version);
 			int32_t treePopulationChunkZ = getPopulationChunkCoordinate(data[i].coordinate.z, data[i].version);
 			bool matchingChunkExists = false;
@@ -284,9 +284,7 @@ struct SetOfTreeChunks {
 // };
 
 
-// __device__ constexpr CoordlessPossibleSetsOfTreeChunks RELATIVE_POPULATION_CHUNKS_DATA(INPUT_DATA, sizeof(INPUT_DATA)/sizeof(*INPUT_DATA));
-// __device__ constexpr SetOfTreeChunks ABSOLUTE_POPULATION_CHUNKS_DATA = RELATIVE_POPULATION_CHUNKS_DATA.possibleSetsOfTreeChunks[0];
-__device__ constexpr SetOfTreeChunks ABSOLUTE_POPULATION_CHUNKS_DATA(INPUT_DATA, sizeof(INPUT_DATA)/sizeof(*INPUT_DATA));
+__managed__ SetOfTreeChunks ABSOLUTE_POPULATION_CHUNKS_DATA{};
 
 struct DoubleStorage {
 	uint64_t structureSeedIndex, treechunkSeed;
@@ -325,10 +323,9 @@ constexpr uint64_t TOTAL_NUMBER_OF_STATES_TO_CHECK = twoToThePowerOf(44 + 4*stat
    On the other hand, during each iteration we're only actually analyzing at most NUMBER_OF_WORKERS*(getHighestMaxCalls() + 1)*(1 << getHighestMaxTreeCount()) entries.
    Therefore the expected number of results we'll need space for is simply the minimum of those two expressions, which is then doubled to provide some leeway just in case.
    (Note: this does not currently take into account the fact that 65536 worldseeds correspond to each ultimate structure seed, since then we'd need to make this 65536x larger and I suspect the structure seeds will be filtered enough to render that unnecessary.)*/
-constexpr uint64_t RECOMMENDED_RESULTS_PER_RUN = 2*constexprMin((twoToThePowerOf(48 - static_cast<uint32_t>(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].treePositions[0].getEstimatedBits(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].biome, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].version) - 0.5)))/ACTUAL_NUMBER_OF_PARTIAL_RUNS, NUMBER_OF_WORKERS*(ABSOLUTE_POPULATION_CHUNKS_DATA.getHighestMaxCalls() + 1)*twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.getHighestMaxTreeCount()));
 // NVCC error C2148 places a hard limit of 0x7fffffff bytes per array, while the largest-information array we'll be using is DoubleStorage.
 constexpr uint64_t MOST_POSSIBLE_RESULTS_PER_RUN = constexprMin(static_cast<uint64_t>(constexprCeil(static_cast<double>(TOTAL_NUMBER_OF_STATES_TO_CHECK)/static_cast<double>(ACTUAL_NUMBER_OF_PARTIAL_RUNS))), 0x7fffffff/sizeof(DoubleStorage));
-constexpr uint64_t ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN = constexprMin(MAX_NUMBER_OF_RESULTS_PER_RUN ? MAX_NUMBER_OF_RESULTS_PER_RUN : RECOMMENDED_RESULTS_PER_RUN, MOST_POSSIBLE_RESULTS_PER_RUN);
+constexpr uint64_t ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN = constexprMin(MAX_NUMBER_OF_RESULTS_PER_RUN ? MAX_NUMBER_OF_RESULTS_PER_RUN : MOST_POSSIBLE_RESULTS_PER_RUN, MOST_POSSIBLE_RESULTS_PER_RUN);
 
 
 #if (!CUDA_IS_PRESENT)
@@ -360,11 +357,11 @@ void printSettingsAndDataWarnings() noexcept {
 	// TODO: Print TYPES_TO_OUTPUT and ACTUAL_TYPES_TO_OUTPUT once toString(OutputType) is implemented
 	if (TYPES_TO_OUTPUT != ACTUAL_TYPES_TO_OUTPUT) std::fprintf(stderr, "WARNING: TYPES_TO_OUTPUT did not have any print settings listed, and so was reset to AUTO.");
 
-	constexpr double inputDataBits = ABSOLUTE_POPULATION_CHUNKS_DATA.getEstimatedBits();
+	const double inputDataBits = ABSOLUTE_POPULATION_CHUNKS_DATA.getEstimatedBits();
 
 	if (inputDataBits < 48.) std::fprintf(stderr, "WARNING: The input data very likely does not have enough information to reduce the search space to a single treechunk seed (%.2g/48 bits).\nIt is VERY HIGHLY recommended you gather more data before running the program.\n", inputDataBits);
 	else {
-		constexpr double inputDataHighestPopulationChunkBits = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].getEstimatedBits();
+		const double inputDataHighestPopulationChunkBits = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].getEstimatedBits();
 		if (inputDataHighestPopulationChunkBits < 48.) std::fprintf(stderr, "\n\nWARNING: The input data's highest-information population chunk very likely does not have enough information to reduce the search space to a single treechunk seed by itself (%.2g/48 bits).\nOther chunks will be used later to filter the possibilities, but this program will run faster and use less memory if you gather more data and only afterwards run the program.\n", inputDataHighestPopulationChunkBits);
 	}
 

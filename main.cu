@@ -1,12 +1,48 @@
 #include "src/Filters.cuh"
 #include <chrono>
+#include "src/Observation Input.cuh"
+#include <new>
 
-int main() {
-	std::string actualFilepath = OUTPUT_FILEPATH;
+__global__ void prepareRuntimeObservations(const InputData *data, const size_t count, TreeChunk *chunks) {
+	for (size_t i = 0; i < count; ++i) chunks[i] = TreeChunk();
+	ABSOLUTE_POPULATION_CHUNKS_DATA = SetOfTreeChunks(data, count, chunks);
+}
+
+
+int main(int argc, char **argv) {
+	if (argc < 2 || argc > 3) {
+		std::fprintf(stderr, "Usage: %s observations.txt [output.txt]\n", argv[0]);
+		return 2;
+	}
+	std::vector<TreeObservation> observations;
+	try { observations = readTreeObservations(argv[1]); }
+	catch (const std::exception &error) { std::fprintf(stderr, "%s\n", error.what()); return 2; }
+	InputData *input;
+	TreeChunk *chunks;
+	TRY_CUDA(cudaMallocManaged(&input, observations.size() * sizeof(*input)));
+	TRY_CUDA(cudaMallocManaged(&chunks, observations.size() * sizeof(*chunks)));
+	for (size_t i = 0; i < observations.size(); ++i) {
+		new (input + i) InputData();
+		const TreeObservation &tree = observations[i];
+		input[i].version = static_cast<Version>(tree.version);
+		input[i].treeType = static_cast<TreeType>(tree.type);
+		input[i].biome = Biome::Forest;
+		input[i].coordinate.x = tree.x;
+		input[i].coordinate.z = tree.z;
+		input[i].trunkHeight.lowerBound = tree.heightMin;
+		input[i].trunkHeight.upperBound = tree.heightMax;
+		for (size_t j = 0; j < NUMBER_OF_LEAF_POSITIONS; ++j) input[i].leafStates[j] = static_cast<LeafState>(tree.leaves[j]);
+	}
+	prepareRuntimeObservations<<<1, 1>>>(input, observations.size(), chunks);
+	TRY_CUDA(cudaGetLastError());
+	TRY_CUDA(cudaDeviceSynchronize());
+	TRY_CUDA(cudaFree(input));
+	const char *outputFilepath = argc == 3 ? argv[2] : OUTPUT_FILEPATH;
+	std::string actualFilepath = outputFilepath;
 	FILE *outputFile = NULL;
 	std::string delimiter = "";
 	// If an output filepath was specified:
-	if (OUTPUT_FILEPATH != NULL && OUTPUT_FILEPATH != "") {
+	if (outputFilepath != NULL && outputFilepath != "") {
 		// First ensure the file doesn't already exist.
 		// NOTE: Admittedly vulnerable to TOC/TOU.
 		// (Technique adapted from PherricOxide on Stack Overflow (https://stackoverflow.com/a/12774387))
@@ -22,7 +58,7 @@ int main() {
 		actualFilepath = stem + delimiter + extension;
 
 		outputFile = std::fopen(actualFilepath.c_str(), "w");
-		if (!outputFile) ABORT("ERROR: Failed to open %s.\n", OUTPUT_FILEPATH);
+		if (!outputFile) ABORT("ERROR: Failed to open %s.\n", outputFilepath);
 	// Otherwise if an output filepath wasn't specified: abort if results won't be printed to the screen either
 	} else if (SILENT_MODE) ABORT("ERROR: No output method for results was provided (SILENT_MODE is enabled and no filepath was specified).\n");
 
@@ -30,7 +66,7 @@ int main() {
 		// Print input structure and setting changes
 		printSettingsAndDataWarnings();
 		// Also warn if the filepath was changed
-		if (OUTPUT_FILEPATH != actualFilepath) std::fprintf(stderr, "WARNING: The specified output filepath (%s) already exists. The output file has been renamed to %s to avoid overwriting it.\n\n", OUTPUT_FILEPATH, actualFilepath.c_str());
+		if (outputFilepath != actualFilepath) std::fprintf(stderr, "WARNING: The specified output filepath (%s) already exists. The output file has been renamed to %s to avoid overwriting it.\n\n", outputFilepath, actualFilepath.c_str());
 	}
 
 	void *filter3_masksPointer;
@@ -154,7 +190,7 @@ int main() {
 				transferEntries(TREECHUNK_FILTER_OUTPUT, PRINT_INPUT, treechunkFilter_numberOfResultsThisWorkerSet);
 				for (uint64_t i = 0; i < treechunkFilter_numberOfResultsThisWorkerSet; ++i) {
 					// TODO: Possibly replace with toString(OutputType) when implemented?
-					if (OUTPUT_FILEPATH != NULL && OUTPUT_FILEPATH != "") {
+					if (outputFilepath != NULL && outputFilepath != "") {
 						std::fprintf(outputFile, "%" PRId64 "%s\n", static_cast<int64_t>(PRINT_INPUT[i]), ACTUAL_TYPES_TO_OUTPUT == static_cast<OutputType>(ExperimentalOutputType::Highest_Information_Treechunk_Seeds) ? "" : "\t(Highest-information Treechunk seed)");
 						std::fflush(outputFile);
 					}
@@ -277,11 +313,14 @@ int main() {
 				transferEntries(ABSOLUTE_POPULATION_CHUNKS_DATA.numberOfTreeChunks == 1 ? POPULATION_REVERSAL_OUTPUT : FILTER_8_OUTPUT, PRINT_INPUT, totalStructureSeedsThisWorkerSet);
 				for (uint64_t i = 0; i < totalStructureSeedsThisWorkerSet; ++i) {
 					// TODO: Possibly replace with toString(OutputType) when implemented?
-					if (OUTPUT_FILEPATH != NULL && OUTPUT_FILEPATH != "") {
+					if (outputFilepath != NULL && outputFilepath != "") {
 						std::fprintf(outputFile, "%" PRId64 "%s\n", static_cast<int64_t>(PRINT_INPUT[i]), ACTUAL_TYPES_TO_OUTPUT == OutputType::Structure_Seeds ? "" : "\t(Structure seed)");
 						std::fflush(outputFile);
 					}
-					if (!SILENT_MODE) std::printf("%" PRId64 "%s\n", static_cast<int64_t>(PRINT_INPUT[i]), ACTUAL_TYPES_TO_OUTPUT == OutputType::Structure_Seeds ? "" : "\t(Structure seed)");
+					if (!SILENT_MODE) {
+						std::printf("%" PRId64 "%s\n", static_cast<int64_t>(PRINT_INPUT[i]), ACTUAL_TYPES_TO_OUTPUT == OutputType::Structure_Seeds ? "" : "\t(Structure seed)");
+						std::fflush(stdout);
+					}
 				}
 				// If no worldseeds were flagged to be printed, skip the rest of the filters
 				if (static_cast<int32_t>(ACTUAL_TYPES_TO_OUTPUT) <= 2*static_cast<int32_t>(OutputType::Structure_Seeds) - 1) continue;
@@ -313,7 +352,7 @@ int main() {
 				transferEntries(WORLDSEED_FILTER_OUTPUT, PRINT_INPUT, totalWorldseedsThisWorkerSet);
 				for (uint64_t i = 0; i < totalWorldseedsThisWorkerSet; ++i) {
 					const char *worldseedAttributes = getWorldseedAttributes(PRINT_INPUT[i], largeBiomesFlag);
-					if (OUTPUT_FILEPATH != NULL && OUTPUT_FILEPATH != "") {
+					if (outputFilepath != NULL && outputFilepath != "") {
 						std::fprintf(outputFile, "%" PRId64 "%s\n", static_cast<int64_t>(PRINT_INPUT[i]), worldseedAttributes);
 						std::fflush(outputFile);
 					}
@@ -324,10 +363,11 @@ int main() {
 		}
 	}
 
-	if (OUTPUT_FILEPATH != NULL && OUTPUT_FILEPATH != "") std::fclose(outputFile);
+	if (outputFilepath != NULL && outputFilepath != "") std::fclose(outputFile);
 
 	#if (!CUDA_IS_PRESENT)
 		free(threads);
 	#endif
+	TRY_CUDA(cudaFree(chunks));
 	return 0;
 }
