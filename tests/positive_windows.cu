@@ -139,4 +139,6 @@ int main(int argc, char **argv) {
 		std::fprintf(results, "%" PRIu64 "\n", seed);
 	}
 	std::fclose(results);
+	TRY_CUDA(cudaFree(chunks));
+	return 0;
 }
