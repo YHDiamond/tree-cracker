@@ -727,6 +727,8 @@ struct TreeChunk {
 	TreeChunkPosition treePositions[16];
 	uint32_t numberOfTreePositions;
 	int32_t maxCalls, maxTreeCount, rangeOfPossibleSkips;
+	// Reuse the exact scan rewind instead of decomposing a negative skip per candidate.
+	LCG scanStartLCG = LCG::combine(-static_cast<int64_t>(maxCalls));
 	uint64_t salt;
 
 	__device__ constexpr TreeChunk() noexcept :

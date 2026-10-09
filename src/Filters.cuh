@@ -165,7 +165,7 @@ void *filter2(void *dat) {
 	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
 	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
 	uint32_t found = 0;
-	Random random = Random::withSeed(seed).skip(-chunk.maxCalls);
+	Random random = Random::withSeed((seed * chunk.scanStartLCG.multiplier + chunk.scanStartLCG.addend) & LCG::MASK);
 
 	for (int32_t currentCall = -chunk.maxCalls; currentCall <= chunk.maxCalls && found != allFound; ++currentCall) {
 		// Every tree test starts with the same two nextInt(16) calls. Share
@@ -214,7 +214,7 @@ void *filter3(void *dat) {
 	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
 	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
 	uint32_t found = 0;
-	Random random = Random::withSeed(seed).skip(-chunk.maxCalls);
+	Random random = Random::withSeed((seed * chunk.scanStartLCG.multiplier + chunk.scanStartLCG.addend) & LCG::MASK);
 
 	for (int32_t currentCall = -chunk.maxCalls; currentCall <= chunk.maxCalls && found != allFound; ++currentCall) {
 		Random coordinateRandom(random);
