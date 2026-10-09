@@ -1,0 +1,194 @@
+{
+  "hardware": "GPU-37201944-20bc-be7e-9f1d-9b82d0967cf1, Tesla T4, 580.178.04, 15360 MiB\nGPU-1cc38db7-d6ad-65aa-5c25-d44417a718d1, Tesla T4, 580.178.04, 15360 MiB",
+  "compiler": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0",
+  "variants": {
+    "baseline": {
+      "revision": "824266428f7a837040544ec0739fd76b2036631d",
+      "binary": "/kaggle/working/tree-benchmark-20261009-114143/full-search/baseline/main",
+      "build_seconds": null,
+      "build_reused": true,
+      "binary_sha256": "4f01b0e8d61694994db4bffb9644505a09bd3e5ddeb3d68a348c309413bf9d93"
+    },
+    "leaf-cache": {
+      "revision": "fd504d0c760d5fca7a03f1e71bec1c339e4f1f96",
+      "binary": "/kaggle/working/tree-benchmark-20261009-114143/leaf-cache-probe/leaf-cache/main",
+      "build_seconds": 69.95609216700018,
+      "build_reused": false,
+      "binary_sha256": "6d0ca4ca7ecaa892836f83dc3dad142b4c340dcaa9375cc9db003feb6544fabd"
+    }
+  },
+  "flags": [
+    "-O3",
+    "-arch=sm_75",
+    "-Xcompiler=-mcmodel=large",
+    "-Xlinker=--no-relax",
+    "--cudart=shared"
+  ],
+  "metric": "observations_available_to_correct_seed_emitted",
+  "validation_only_truth_checked_after_exhaustive_run": true,
+  "exhaustive": true,
+  "domain_states": 17592186044416,
+  "seed_supplied_to_solver": false,
+  "timing_boundary": {
+    "start": "complete tree observations available in active GPU environment",
+    "includes": [
+      "input writing",
+      "process and CUDA startup",
+      "parsing and chunk construction",
+      "search until correct seed printed"
+    ],
+    "excludes": [
+      "observation collection",
+      "GPU provisioning",
+      "source download",
+      "reusable build"
+    ]
+  },
+  "repeats": 1,
+  "results": [
+    {
+      "case": "fresh-four-tree",
+      "variant": "baseline",
+      "repeat": 0,
+      "correct_seed_seconds": 39.808447759000046,
+      "complete_output_seconds": 55.219416192999915,
+      "first_candidate_seconds": 39.808447759000046,
+      "unique_seed": true,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "candidate_emissions": [
+        [
+          128110318218222,
+          39.808447759000046
+        ]
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "leaf-cache",
+      "repeat": 0,
+      "correct_seed_seconds": 39.251241618999984,
+      "complete_output_seconds": 53.908780191000005,
+      "first_candidate_seconds": 39.251241618999984,
+      "unique_seed": true,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "candidate_emissions": [
+        [
+          128110318218222,
+          39.251241618999984
+        ]
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "baseline",
+      "repeat": 0,
+      "correct_seed_seconds": 44.64581561700015,
+      "complete_output_seconds": 68.17106777700019,
+      "first_candidate_seconds": 44.64580344000001,
+      "unique_seed": false,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "candidate_emissions": [
+        [
+          89593286004526,
+          44.64580344000001
+        ],
+        [
+          115468527086863,
+          44.64581252200014
+        ],
+        [
+          157527116063087,
+          44.64581561700015
+        ],
+        [
+          272740909957168,
+          44.64581904500005
+        ]
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "leaf-cache",
+      "repeat": 0,
+      "correct_seed_seconds": 43.85910708200004,
+      "complete_output_seconds": 66.83054184599996,
+      "first_candidate_seconds": 43.85909610199997,
+      "unique_seed": false,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "candidate_emissions": [
+        [
+          89593286004526,
+          43.85909610199997
+        ],
+        [
+          115468527086863,
+          43.85910359700006
+        ],
+        [
+          157527116063087,
+          43.85910708200004
+        ],
+        [
+          272740909957168,
+          43.85911039200005
+        ]
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    }
+  ],
+  "summary": {
+    "fresh-four-tree": {
+      "baseline": {
+        "correct_seed_seconds": 39.808447759000046,
+        "complete_output_seconds": 55.219416192999915,
+        "first_candidate_seconds": 39.808447759000046
+      },
+      "leaf-cache": {
+        "correct_seed_seconds": 39.251241618999984,
+        "complete_output_seconds": 53.908780191000005,
+        "first_candidate_seconds": 39.251241618999984
+      }
+    },
+    "documented-five-tree": {
+      "baseline": {
+        "correct_seed_seconds": 44.64581561700015,
+        "complete_output_seconds": 68.17106777700019,
+        "first_candidate_seconds": 44.64580344000001
+      },
+      "leaf-cache": {
+        "correct_seed_seconds": 43.85910708200004,
+        "complete_output_seconds": 66.83054184599996,
+        "first_candidate_seconds": 43.85909610199997
+      }
+    }
+  }
+}

@@ -1,0 +1,567 @@
+import os
+from pathlib import Path
+import subprocess
+from datetime import datetime, timezone
+
+
+subprocess.run(["nvcc", "--version"], check=True)
+hardware = subprocess.check_output([
+    "nvidia-smi", "--query-gpu=uuid,name,driver_version,memory.total",
+    "--format=csv,noheader",
+], text=True).strip()
+print(hardware, flush=True)
+env = os.environ.copy()
+env["CUDA_VISIBLE_DEVICES"] = hardware.splitlines()[0].split(",")[0].strip()
+
+
+repo = Path("/kaggle/working/tree-cracker")
+subprocess.run([
+    "git", "clone", "https://github.com/YHDiamond/tree-cracker.git", str(repo),
+], check=True)
+# This experimental revision contains the runtime-vs-runtime benchmark.
+subprocess.run(["git", "switch", "--detach", "344b6de"], cwd=repo, check=True)
+subprocess.run([
+    "python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py",
+], cwd=repo, env=env, check=True)
+
+
+results = Path("/kaggle/working") / (
+    "tree-benchmark-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+)
+variants = ["--variant", "baseline=8242664", "--variant", "optimized=344b6de"]
+# Five seeds, three repeats per variant; bounded validation-only windows.
+subprocess.run([
+    "python3", "tests/benchmark.py", *variants,
+    "--positive-window", "--workers", "2097152", "--capacity", "4194304",
+    "--repeats", "3", "--output", str(results / "five-seed"),
+], cwd=repo, env=env, check=True)
+# Two rich observation sets, three alternating repeats per variant;
+# complete searches, with no known seed supplied to either solver.
+subprocess.run([
+    "python3", "tests/benchmark_runtime.py", *variants,
+    "--repeats", "3", "--expected-hardware", hardware,
+    "--output", str(results / "full-search"),
+], cwd=repo, env=env, check=True)
+print("Reports and logs:", results, flush=True)
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+GPU-37201944-20bc-be7e-9f1d-9b82d0967cf1, Tesla T4, 580.178.04, 15360 MiB
+GPU-1cc38db7-d6ad-65aa-5c25-d44417a718d1, Tesla T4, 580.178.04, 15360 MiB
+
+Cloning into '/kaggle/working/tree-cracker'...
+HEAD is now at 344b6de Reject non-Birch selectors directly for Birch observations
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 10.420s
+
+OK
+
+
+Parity coverage: {"accepted_full_fixture_masks": 10, "accepted_masks": 116, "empty_masks": 87, "filter2": 503, "filter3": 572, "inclusive_boundary_or_interior_matches": 360, "mask_comparisons": 1075, "nonempty_masks": 988}
+{"hardware": "GPU-37201944-20bc-be7e-9f1d-9b82d0967cf1, Tesla T4, 580.178.04, 15360 MiB\nGPU-1cc38db7-d6ad-65aa-5c25-d44417a718d1, Tesla T4, 580.178.04, 15360 MiB", "compiler": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0", "exhaustive": false, "mode": "positive_window_regression", "validation_only": true, "workers": 2097152, "capacity": 4194304, "flags": ["-O3", "-arch=sm_75", "-Xcompiler=-mcmodel=large", "-Xlinker=--no-relax", "--cudart=shared"], "profile_batches": 0, "repeats": 3, "controlled_worker_bounds": true, "corrected_64bit_treechunk_indices": true}
+RUN baseline public-16-1-1 build=66.868s
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.284768
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-1", "seconds": 0.8639714409999897, "build_seconds": 66.86775954499996, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.284768, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.211994
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-1", "seconds": 0.5942082889999938, "build_seconds": 66.86775954499996, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.211994, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.211534
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-1", "seconds": 0.5951557419999745, "build_seconds": 66.86775954499996, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.211534, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+RUN baseline public-16-1-2 build=66.868s
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045962
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-2", "seconds": 0.420558686999982, "build_seconds": 66.86775954499996, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.045962, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.044783
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-2", "seconds": 0.4211844989999918, "build_seconds": 66.86775954499996, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.044783, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045299
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "public-16-1-2", "seconds": 0.4214767899999856, "build_seconds": 66.86775954499996, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.045299, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+RUN baseline dev-03-forest build=66.868s
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.031816
+215932542980585
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-03-forest", "seconds": 0.43160550400000375, "build_seconds": 66.86775954499996, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.031816, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.041495
+215932542980585
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-03-forest", "seconds": 0.4796271929999989, "build_seconds": 66.86775954499996, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.041495, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.044346
+215932542980585
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-03-forest", "seconds": 0.5059349619999693, "build_seconds": 66.86775954499996, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.044346, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+RUN baseline dev-04-forest build=66.868s
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.042463
+14458397300392
+66623320156840
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-04-forest", "seconds": 0.4587483820000102, "build_seconds": 66.86775954499996, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.042463, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.042181
+14458397300392
+66623320156840
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-04-forest", "seconds": 0.4625549140000089, "build_seconds": 66.86775954499996, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.042181, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.042369
+14458397300392
+66623320156840
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-04-forest", "seconds": 0.4603608560000225, "build_seconds": 66.86775954499996, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.042369, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+RUN baseline dev-05-forest build=66.868s
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.047630
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-05-forest", "seconds": 0.5059771679999585, "build_seconds": 66.86775954499996, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.04763, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.049630
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-05-forest", "seconds": 0.5182342420000055, "build_seconds": 66.86775954499996, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.04963, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.043104
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "baseline", "commit": "824266428f7a837040544ec0739fd76b2036631d", "case": "dev-05-forest", "seconds": 0.49059397500002433, "build_seconds": 66.86775954499996, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "f3d9e27c07b3f4963f6eec350b2630f4db3f2c4c7c007f323096e6e0c632d14e", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.043104, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+RUN optimized public-16-1-1 build=67.313s
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.322583
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-1", "seconds": 0.8647952360000772, "build_seconds": 67.31291742299999, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.322583, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.211479
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-1", "seconds": 0.5940558149999333, "build_seconds": 67.31291742299999, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.211479, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[5564459384832,5564461481984) primary=75933204370636 treechunk=279316382345026 matching_masks=24
+UNIT_REGRESSION filter1 unique_results=26239 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=4286 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=4286 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=29 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=27 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.211419
+1498386665580
+4529443168258
+5430781456941
+11655937590157
+21938030936578
+65000578864080
+70314994091106
+74487599449125
+79085823942404
+87275882728258
+90386044974798
+117122177823372
+127232459016748
+128902112825260
+168600532142404
+178034154873505
+184166666620493
+201189465461506
+217092189677506
+221165750652622
+235335270155248
+236063333432734
+245199188283852
+248789729146188
+251026147278754
+256261176740898
+265743538737102
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-1", "seconds": 0.6006509620000315, "build_seconds": 67.31291742299999, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 27, "candidate_sha256": "b97a29207913d8378a13526c9aa77e62509ad829107ded48bfc3413ba8ee5fae", "expected_recovered": true, "input_sha256": "c14efee5f62781fe96c52c3e9ca7ccf4ce43d8be7a6f1c51d03f20feae3dae35", "pipeline_seconds": 0.211419, "tested_state_window": [5564459384832, 5564461481984], "validation_only": true, "expected_positive_retained": true, "candidate_set": [1498386665580, 4529443168258, 5430781456941, 11655937590157, 21938030936578, 65000578864080, 70314994091106, 74487599449125, 79085823942404, 87275882728258, 90386044974798, 117122177823372, 127232459016748, 128902112825260, 168600532142404, 178034154873505, 184166666620493, 201189465461506, 217092189677506, 221165750652622, 235335270155248, 236063333432734, 245199188283852, 248789729146188, 251026147278754, 256261176740898, 265743538737102], "same_window": true, "same_output": true}
+RUN optimized public-16-1-2 build=67.313s
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045520
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-2", "seconds": 0.42255149200002506, "build_seconds": 67.31291742299999, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.04552, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045805
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-2", "seconds": 0.42682920799995827, "build_seconds": 67.31291742299999, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.045805, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11287968874496,11287970971648) primary=116841086959876 treechunk=173456832337709 matching_masks=2
+UNIT_REGRESSION filter1 unique_results=26097 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=521 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=521 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=5 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=4 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045169
+89593286004526
+115468527086863
+157527116063087
+272740909957168
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "public-16-1-2", "seconds": 0.4212331249999579, "build_seconds": 67.31291742299999, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 4, "candidate_sha256": "0e21123f6ba99c071086e2cce93968ae9de3be461e8b3a1ee9f08618e96abadb", "expected_recovered": true, "input_sha256": "0a0819f1dc3f9b9d8c3dc5410c31360526cbe2d8b935964e1425802197450596", "pipeline_seconds": 0.045169, "tested_state_window": [11287968874496, 11287970971648], "validation_only": true, "expected_positive_retained": true, "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "same_window": true, "same_output": true}
+RUN optimized dev-03-forest build=67.313s
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.041696
+215932542980585
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-03-forest", "seconds": 0.4655470170000626, "build_seconds": 67.31291742299999, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.041696, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.037054
+215932542980585
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-03-forest", "seconds": 0.4671700450001026, "build_seconds": 67.31291742299999, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.037054, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[4098053111808,4098055208960) primary=250388659189475 treechunk=276204201219559 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10505 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=318 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=318 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=1 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.037246
+215932542980585
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-03-forest", "seconds": 0.48334594000004927, "build_seconds": 67.31291742299999, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 1, "candidate_sha256": "43bc7f1a3709b99e1237ca8cfbb9370db2f3b333c76c7ac5651bead191145054", "expected_recovered": true, "input_sha256": "a86f2386bb76677f67791026d9adbc9d470a031f7caa228c48680799c3631f96", "pipeline_seconds": 0.037246, "tested_state_window": [4098053111808, 4098055208960], "validation_only": true, "expected_positive_retained": true, "candidate_set": [215932542980585], "same_window": true, "same_output": true}
+RUN optimized dev-04-forest build=67.313s
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.042539
+14458397300392
+66623320156840
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-04-forest", "seconds": 0.46402759099999, "build_seconds": 67.31291742299999, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.042539, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.049329
+14458397300392
+66623320156840
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-04-forest", "seconds": 0.4896918640000649, "build_seconds": 67.31291742299999, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.049329, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[15480536432640,15480538529792) primary=173810211049358 treechunk=76004452499380 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=26231 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=1164 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=1164 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=2 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.044947
+14458397300392
+66623320156840
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-04-forest", "seconds": 0.47456365799996547, "build_seconds": 67.31291742299999, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 2, "candidate_sha256": "50fa45119a67a2a7d4d436c19e05331dc9c4620911084bbbe5b41032bbbd196f", "expected_recovered": true, "input_sha256": "211be6169db9288a2dbb6d91b14878d9cffaa37a194bb89bf34332df079b4a08", "pipeline_seconds": 0.044947, "tested_state_window": [15480536432640, 15480538529792], "validation_only": true, "expected_positive_retained": true, "candidate_set": [14458397300392, 66623320156840], "same_window": true, "same_output": true}
+RUN optimized dev-05-forest build=67.313s
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.040883
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-05-forest", "seconds": 0.4656778300000042, "build_seconds": 67.31291742299999, "repeat": 0, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.040883, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.040685
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-05-forest", "seconds": 0.4703609560000359, "build_seconds": 67.31291742299999, "repeat": 1, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.040685, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true
+UNIT_REGRESSION validation_only=true exhaustive=false window=[11601455349760,11601457446912) primary=134746757687011 treechunk=11635488624577 matching_masks=1
+UNIT_REGRESSION filter1 unique_results=10492 positive_retained=true
+UNIT_REGRESSION filter2 unique_results=9 positive_retained=true
+UNIT_REGRESSION filter3 unique_results=9 positive_retained=true
+UNIT_REGRESSION treechunkFilter unique_results=1 positive_retained=true
+UNIT_REGRESSION reversePopulationSeeds unique_results=3 positive_retained=true
+UNIT_REGRESSION passed=true exhaustive=false seconds=0.045973
+9172045131547
+98100008333723
+149093665387995
+RESULT {"variant": "optimized", "commit": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "case": "dev-05-forest", "seconds": 0.49042436000002, "build_seconds": 67.31291742299999, "repeat": 2, "exit_code": 0, "valid": true, "runtime_input": true, "binary_sha256": "ccb4b663fc3d70dbb0167f0702a6d89a6ec5d447158b7ca3ed87374fea210ea3", "candidate_count": 3, "candidate_sha256": "0ef7787d761bb9e6f500dd263bc70d23af8147f0b1aacbd8bf95c2315d98cbe2", "expected_recovered": true, "input_sha256": "2ccfeb0efb1738ddcf8d81f3b4c026c8318339e4b3aeec77298cd48fa2138865", "pipeline_seconds": 0.045973, "tested_state_window": [11601455349760, 11601457446912], "validation_only": true, "expected_positive_retained": true, "candidate_set": [9172045131547, 98100008333723, 149093665387995], "same_window": true, "same_output": true}
+BUILD {"baseline": {"revision": "824266428f7a837040544ec0739fd76b2036631d", "binary": "/kaggle/working/tree-benchmark-20261009-114143/full-search/baseline/main", "build_seconds": 66.44107034299998, "build_reused": false, "binary_sha256": "4f01b0e8d61694994db4bffb9644505a09bd3e5ddeb3d68a348c309413bf9d93"}}
+BUILD {"optimized": {"revision": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "binary": "/kaggle/working/tree-benchmark-20261009-114143/full-search/optimized/main", "build_seconds": 66.18439660600006, "build_reused": false, "binary_sha256": "83c33f05848c09b88e3d21609b1f869205969af8212a3e322c4f01e923cf77c5"}}
+TRIAL {"case": "fresh-four-tree", "variant": "baseline", "repeat": 0, "correct_seed_seconds": 39.2066316370001, "complete_output_seconds": 54.29726073200004, "first_candidate_seconds": 39.2066316370001, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 39.2066316370001]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "fresh-four-tree", "variant": "optimized", "repeat": 0, "correct_seed_seconds": 32.61835193100001, "complete_output_seconds": 44.95842840099999, "first_candidate_seconds": 32.61835193100001, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 32.61835193100001]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "fresh-four-tree", "variant": "optimized", "repeat": 1, "correct_seed_seconds": 33.43109340700005, "complete_output_seconds": 45.734944075000044, "first_candidate_seconds": 33.43109340700005, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 33.43109340700005]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "fresh-four-tree", "variant": "baseline", "repeat": 1, "correct_seed_seconds": 41.313403765999965, "complete_output_seconds": 56.965121289999956, "first_candidate_seconds": 41.313403765999965, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 41.313403765999965]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "fresh-four-tree", "variant": "baseline", "repeat": 2, "correct_seed_seconds": 41.532034003000035, "complete_output_seconds": 57.20961532800004, "first_candidate_seconds": 41.532034003000035, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 41.532034003000035]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "fresh-four-tree", "variant": "optimized", "repeat": 2, "correct_seed_seconds": 33.05934343699994, "complete_output_seconds": 45.37231059800001, "first_candidate_seconds": 33.05934343699994, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 33.05934343699994]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "baseline", "repeat": 0, "correct_seed_seconds": 44.718702105000034, "complete_output_seconds": 68.24783965799998, "first_candidate_seconds": 44.71869474999994, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.71869474999994], [115468527086863, 44.718700625], [157527116063087, 44.718702105000034], [272740909957168, 44.71870334899995]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "optimized", "repeat": 0, "correct_seed_seconds": 48.95347758499997, "complete_output_seconds": 76.4087875629998, "first_candidate_seconds": 48.9534535759999, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 48.9534535759999], [115468527086863, 48.953461801], [157527116063087, 48.95347758499997], [272740909957168, 48.95347989599986]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "optimized", "repeat": 1, "correct_seed_seconds": 48.352695736999976, "complete_output_seconds": 75.72180787299999, "first_candidate_seconds": 48.35267346699993, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 48.35267346699993], [115468527086863, 48.35268133999989], [157527116063087, 48.352695736999976], [272740909957168, 48.35269829999993]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "baseline", "repeat": 1, "correct_seed_seconds": 44.78501148999999, "complete_output_seconds": 68.30676343900018, "first_candidate_seconds": 44.78500449000012, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.78500449000012], [115468527086863, 44.78500977700014], [157527116063087, 44.78501148999999], [272740909957168, 44.78501292400006]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "baseline", "repeat": 2, "correct_seed_seconds": 44.76183472900016, "complete_output_seconds": 68.33984205600018, "first_candidate_seconds": 44.7618258330001, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.7618258330001], [115468527086863, 44.76183260200014], [157527116063087, 44.76183472900016], [272740909957168, 44.761836710000125]], "exit_code": 0, "overflow": false, "same_output": true}
+TRIAL {"case": "documented-five-tree", "variant": "optimized", "repeat": 2, "correct_seed_seconds": 50.21738862699999, "complete_output_seconds": 75.56370756799993, "first_candidate_seconds": 50.21737933999998, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 50.21737933999998], [115468527086863, 50.21738634799999], [157527116063087, 50.21738862699999], [272740909957168, 50.217391156000076]], "exit_code": 0, "overflow": false, "same_output": true}
+RUNTIME_SPEED_REPORT {"hardware": "GPU-37201944-20bc-be7e-9f1d-9b82d0967cf1, Tesla T4, 580.178.04, 15360 MiB\nGPU-1cc38db7-d6ad-65aa-5c25-d44417a718d1, Tesla T4, 580.178.04, 15360 MiB", "compiler": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Feb_21_20:23:50_PST_2025\nCuda compilation tools, release 12.8, V12.8.93\nBuild cuda_12.8.r12.8/compiler.35583870_0", "variants": {"baseline": {"revision": "824266428f7a837040544ec0739fd76b2036631d", "binary": "/kaggle/working/tree-benchmark-20261009-114143/full-search/baseline/main", "build_seconds": 66.44107034299998, "build_reused": false, "binary_sha256": "4f01b0e8d61694994db4bffb9644505a09bd3e5ddeb3d68a348c309413bf9d93"}, "optimized": {"revision": "344b6de1f940d790ff5cfbef9eb830b6ef3a202e", "binary": "/kaggle/working/tree-benchmark-20261009-114143/full-search/optimized/main", "build_seconds": 66.18439660600006, "build_reused": false, "binary_sha256": "83c33f05848c09b88e3d21609b1f869205969af8212a3e322c4f01e923cf77c5"}}, "flags": ["-O3", "-arch=sm_75", "-Xcompiler=-mcmodel=large", "-Xlinker=--no-relax", "--cudart=shared"], "metric": "observations_available_to_correct_seed_emitted", "validation_only_truth_checked_after_exhaustive_run": true, "exhaustive": true, "domain_states": 17592186044416, "seed_supplied_to_solver": false, "timing_boundary": {"start": "complete tree observations available in active GPU environment", "includes": ["input writing", "process and CUDA startup", "parsing and chunk construction", "search until correct seed printed"], "excludes": ["observation collection", "GPU provisioning", "source download", "reusable build"]}, "repeats": 3, "results": [{"case": "fresh-four-tree", "variant": "baseline", "repeat": 0, "correct_seed_seconds": 39.2066316370001, "complete_output_seconds": 54.29726073200004, "first_candidate_seconds": 39.2066316370001, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 39.2066316370001]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "fresh-four-tree", "variant": "optimized", "repeat": 0, "correct_seed_seconds": 32.61835193100001, "complete_output_seconds": 44.95842840099999, "first_candidate_seconds": 32.61835193100001, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 32.61835193100001]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "fresh-four-tree", "variant": "optimized", "repeat": 1, "correct_seed_seconds": 33.43109340700005, "complete_output_seconds": 45.734944075000044, "first_candidate_seconds": 33.43109340700005, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 33.43109340700005]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "fresh-four-tree", "variant": "baseline", "repeat": 1, "correct_seed_seconds": 41.313403765999965, "complete_output_seconds": 56.965121289999956, "first_candidate_seconds": 41.313403765999965, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 41.313403765999965]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "fresh-four-tree", "variant": "baseline", "repeat": 2, "correct_seed_seconds": 41.532034003000035, "complete_output_seconds": 57.20961532800004, "first_candidate_seconds": 41.532034003000035, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 41.532034003000035]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "fresh-four-tree", "variant": "optimized", "repeat": 2, "correct_seed_seconds": 33.05934343699994, "complete_output_seconds": 45.37231059800001, "first_candidate_seconds": 33.05934343699994, "unique_seed": true, "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b", "candidate_set": [128110318218222], "candidate_emissions": [[128110318218222, 33.05934343699994]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "baseline", "repeat": 0, "correct_seed_seconds": 44.718702105000034, "complete_output_seconds": 68.24783965799998, "first_candidate_seconds": 44.71869474999994, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.71869474999994], [115468527086863, 44.718700625], [157527116063087, 44.718702105000034], [272740909957168, 44.71870334899995]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "optimized", "repeat": 0, "correct_seed_seconds": 48.95347758499997, "complete_output_seconds": 76.4087875629998, "first_candidate_seconds": 48.9534535759999, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 48.9534535759999], [115468527086863, 48.953461801], [157527116063087, 48.95347758499997], [272740909957168, 48.95347989599986]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "optimized", "repeat": 1, "correct_seed_seconds": 48.352695736999976, "complete_output_seconds": 75.72180787299999, "first_candidate_seconds": 48.35267346699993, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 48.35267346699993], [115468527086863, 48.35268133999989], [157527116063087, 48.352695736999976], [272740909957168, 48.35269829999993]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "baseline", "repeat": 1, "correct_seed_seconds": 44.78501148999999, "complete_output_seconds": 68.30676343900018, "first_candidate_seconds": 44.78500449000012, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.78500449000012], [115468527086863, 44.78500977700014], [157527116063087, 44.78501148999999], [272740909957168, 44.78501292400006]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "baseline", "repeat": 2, "correct_seed_seconds": 44.76183472900016, "complete_output_seconds": 68.33984205600018, "first_candidate_seconds": 44.7618258330001, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 44.7618258330001], [115468527086863, 44.76183260200014], [157527116063087, 44.76183472900016], [272740909957168, 44.761836710000125]], "exit_code": 0, "overflow": false, "same_output": true}, {"case": "documented-five-tree", "variant": "optimized", "repeat": 2, "correct_seed_seconds": 50.21738862699999, "complete_output_seconds": 75.56370756799993, "first_candidate_seconds": 50.21737933999998, "unique_seed": false, "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651", "candidate_set": [89593286004526, 115468527086863, 157527116063087, 272740909957168], "candidate_emissions": [[89593286004526, 50.21737933999998], [115468527086863, 50.21738634799999], [157527116063087, 50.21738862699999], [272740909957168, 50.217391156000076]], "exit_code": 0, "overflow": false, "same_output": true}], "summary": {"fresh-four-tree": {"baseline": {"correct_seed_seconds": 41.313403765999965, "complete_output_seconds": 56.965121289999956, "first_candidate_seconds": 41.313403765999965}, "optimized": {"correct_seed_seconds": 33.05934343699994, "complete_output_seconds": 45.37231059800001, "first_candidate_seconds": 33.05934343699994}}, "documented-five-tree": {"baseline": {"correct_seed_seconds": 44.76183472900016, "complete_output_seconds": 68.30676343900018, "first_candidate_seconds": 44.7618258330001}, "optimized": {"correct_seed_seconds": 48.95347758499997, "complete_output_seconds": 75.72180787299999, "first_candidate_seconds": 48.9534535759999}}}}
+Reports and logs: /kaggle/working/tree-benchmark-20261009-114143
