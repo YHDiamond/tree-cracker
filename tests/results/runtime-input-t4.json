@@ -1,0 +1,319 @@
+{
+  "hardware": "GPU-2891ecda-a53e-c564-6771-d543407075ff, Tesla T4, 580.82.07, 15360 MiB",
+  "compiler": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0",
+  "runtime_commit": "824266428f7a837040544ec0739fd76b2036631d",
+  "baseline_commit": "a69f2367dbb4a7d8f3361d8ebbcd02b613598c7e",
+  "flags": [
+    "-O3",
+    "-arch=sm_75",
+    "-Xcompiler=-mcmodel=large",
+    "-Xlinker=--no-relax",
+    "--cudart=shared"
+  ],
+  "runtime_build_seconds": 79.30315028299992,
+  "metric": "observations_available_to_complete_exhaustive_candidate_output",
+  "exhaustive": true,
+  "domain_states": 17592186044416,
+  "seed_supplied_to_solver": false,
+  "baseline_stdout_flush_only_change": true,
+  "repeats": 3,
+  "results": [
+    {
+      "case": "fresh-four-tree",
+      "variant": "compiled",
+      "repeat": 0,
+      "end_to_end_seconds": 120.00966401400001,
+      "solver_seconds": 53.63630365800054,
+      "compile_seconds": 66.37303476499983,
+      "first_candidate_seconds": 104.8981233279992,
+      "cold_end_to_end_seconds": 120.00966401400001,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "runtime",
+      "repeat": 0,
+      "end_to_end_seconds": 59.6934379810009,
+      "solver_seconds": 59.693319455000164,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 42.42478419899999,
+      "cold_end_to_end_seconds": 138.99658826400082,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "runtime",
+      "repeat": 1,
+      "end_to_end_seconds": 60.89183606900042,
+      "solver_seconds": 60.891667551000864,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 44.0991697999998,
+      "cold_end_to_end_seconds": 140.19498635200034,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "compiled",
+      "repeat": 1,
+      "end_to_end_seconds": 123.69353670899909,
+      "solver_seconds": 59.32217507399946,
+      "compile_seconds": 64.371019350001,
+      "first_candidate_seconds": 106.60370435500045,
+      "cold_end_to_end_seconds": 123.69353670899909,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "compiled",
+      "repeat": 2,
+      "end_to_end_seconds": 121.49372612600018,
+      "solver_seconds": 56.840036963001694,
+      "compile_seconds": 64.65332334800041,
+      "first_candidate_seconds": 105.35369285199886,
+      "cold_end_to_end_seconds": 121.49372612600018,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "fresh-four-tree",
+      "variant": "runtime",
+      "repeat": 2,
+      "end_to_end_seconds": 61.464135444999556,
+      "solver_seconds": 61.464019410999754,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 44.678046367000206,
+      "cold_end_to_end_seconds": 140.76728572799948,
+      "input_sha256": "d2b03c0119822c214b548b7f288e11778c304fb3f6175f3bf91aeca6fd40fd3b",
+      "candidate_set": [
+        128110318218222
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "compiled",
+      "repeat": 0,
+      "end_to_end_seconds": 130.79131113900075,
+      "solver_seconds": 68.90454237000085,
+      "compile_seconds": 61.88634565299981,
+      "first_candidate_seconds": 106.50277145000109,
+      "cold_end_to_end_seconds": 130.79131113900075,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "runtime",
+      "repeat": 0,
+      "end_to_end_seconds": 72.47469135200117,
+      "solver_seconds": 72.47457100500105,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 47.487823506000495,
+      "cold_end_to_end_seconds": 151.7778416350011,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "runtime",
+      "repeat": 1,
+      "end_to_end_seconds": 72.43484372499915,
+      "solver_seconds": 72.43466435499977,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 47.40932040900043,
+      "cold_end_to_end_seconds": 151.73799400799908,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "compiled",
+      "repeat": 1,
+      "end_to_end_seconds": 131.52574119600104,
+      "solver_seconds": 70.45577462700021,
+      "compile_seconds": 61.06959342799928,
+      "first_candidate_seconds": 106.32898298000146,
+      "cold_end_to_end_seconds": 131.52574119600104,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "compiled",
+      "repeat": 2,
+      "end_to_end_seconds": 132.93168916300056,
+      "solver_seconds": 70.28666899699965,
+      "compile_seconds": 62.644671218999065,
+      "first_candidate_seconds": 107.74753935199988,
+      "cold_end_to_end_seconds": 132.93168916300056,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    },
+    {
+      "case": "documented-five-tree",
+      "variant": "runtime",
+      "repeat": 2,
+      "end_to_end_seconds": 72.33795074800037,
+      "solver_seconds": 72.33782584599976,
+      "compile_seconds": 0,
+      "first_candidate_seconds": 47.13880232700103,
+      "cold_end_to_end_seconds": 151.6411010310003,
+      "input_sha256": "2a8bf9337841d706f68b90416f67250afc4233ba782f6592004e151bfbd81651",
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "overflow": false,
+      "same_output": true
+    }
+  ],
+  "summary": {
+    "fresh-four-tree": {
+      "compiled": {
+        "end_to_end_seconds": 121.49372612600018,
+        "solver_seconds": 56.840036963001694,
+        "compile_seconds": 64.65332334800041,
+        "first_candidate_seconds": 105.35369285199886,
+        "cold_end_to_end_seconds": 121.49372612600018
+      },
+      "runtime": {
+        "end_to_end_seconds": 60.89183606900042,
+        "solver_seconds": 60.891667551000864,
+        "compile_seconds": 0,
+        "first_candidate_seconds": 44.0991697999998,
+        "cold_end_to_end_seconds": 140.19498635200034
+      },
+      "end_to_end_speedup": 1.995238343418121
+    },
+    "documented-five-tree": {
+      "compiled": {
+        "end_to_end_seconds": 131.52574119600104,
+        "solver_seconds": 70.28666899699965,
+        "compile_seconds": 61.88634565299981,
+        "first_candidate_seconds": 106.50277145000109,
+        "cold_end_to_end_seconds": 131.52574119600104
+      },
+      "runtime": {
+        "end_to_end_seconds": 72.43484372499915,
+        "solver_seconds": 72.43466435499977,
+        "compile_seconds": 0,
+        "first_candidate_seconds": 47.40932040900043,
+        "cold_end_to_end_seconds": 151.73799400799908
+      },
+      "end_to_end_speedup": 1.8157800090705252
+    }
+  },
+  "validation_only": {
+    "expected_candidates": {
+      "fresh-four-tree": [
+        128110318218222
+      ],
+      "documented-five-tree": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ]
+    },
+    "all_12_full_runs_match": true,
+    "seed_used_only_after_inference": true
+  },
+  "runtime_binary_sha256": "c33512c79fb43a39ba64cb2398d60ee204f2d4113f0edff4da8e0b99dc1b5ac7",
+  "timing_boundary": {
+    "start": "complete tree observations available in the active GPU environment",
+    "includes": [
+      "input serialization",
+      "per-input compilation if needed",
+      "process and CUDA startup",
+      "runtime parsing and chunk construction",
+      "exhaustive search",
+      "candidate output"
+    ],
+    "excludes": [
+      "observation collection and video extraction",
+      "source checkout and GPU provisioning"
+    ],
+    "first_candidate_metric": "candidate emitted on flushed stdout; verified correct and unique after full search for the fresh world"
+  },
+  "five_seed_regression": {
+    "commit": "b2568e089b2dc6a3753cd261809cce047fd3033e",
+    "passed": 15,
+    "total": 15,
+    "same_output_and_windows": true,
+    "one_binary_for_all_five_inputs": true
+  }
+}

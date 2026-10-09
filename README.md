@@ -142,6 +142,31 @@ The first three trees produced six structure-seed candidates; the fourth tree in
 
 The exact observations are saved in [the runtime input](Test%20Data/fresh-16-1-20261009.txt), with hardware, compile flags, input hash, seed verification and per-tree details in [the measurement](tests/results/fresh-world-t4.json) and all sixteen partitions in [the run log](tests/results/fresh-world-t4.log). The historical compiled-input measurement used revision `12b52097eb136dd32074b1435288a51df688e09a` and [this input array](Test%20Data/fresh-16-1-20261009.cuh). The current executable takes the text input directly.
 
+## Runtime observations: total time to 48-bit output
+
+The reusable runtime-input binary was compared with compiled observations on the **same T4 UUID above**, using identical CUDA flags, inputs and complete 2^44-state searches. Each compiled-input trial included observation preparation, a fresh compilation, process/CUDA startup, search and output. Runtime-input trials reused one binary and included writing the observation file, parsing, chunk construction, startup, search and output. Source retrieval, GPU provisioning and collecting tree observations were outside both timers. Orders alternated across three repeats per input.
+
+| Input | Compiled: complete output | Runtime: complete output | Total speedup |
+|---|---:|---:|---:|
+| Fresh four-tree world | 121.494 s | 60.892 s | 1.995× |
+| Documented five-tree example | 131.526 s | 72.435 s | 1.816× |
+
+For the fresh world, the correct **128110318218222** candidate was first emitted after **44.099 s** with runtime input, versus **105.354 s** including per-input compilation. Completion of the exhaustive search confirmed it was unique. The documented example preserved its exact four-candidate set; its first candidate alone does not establish the correct seed.
+
+The reusable build took **79.303 s once**. Including this build, a first fresh-world runtime-input search totals **140.195 s**; later fresh-world inputs take the measured **60.892 s** through complete output. Search-process medians rose from 56.840 to 60.892 s for the fresh case (about 7.1%), and from 70.287 to 72.435 s for the documented case (about 3.1%). Eliminating input-specific compilation outweighs this cost once the binary is built. These observations still include heights and leaf corners; this comparison does not measure a positions/types-only exhaustive search.
+
+All **12 exhaustive comparison runs** preserved exact output, with no overflow. The runtime loader also passed **15/15 bounded GPU regressions** across the same five fixtures, matching earlier candidate sets and exact known-positive windows with one reusable binary. Those bounded regressions validate correctness; they are not full seed-recovery timings. The local parser and arithmetic suite passed 20 tests. No blind data was read, and no seed or restricted window was supplied to either exhaustive solver.
+
+Pinned revisions, trial times, input/binary hashes and timing boundaries are in [the total-time report](tests/results/runtime-input-t4.json). The [five-seed report](tests/results/runtime-five-seed-t4.json), [fresh runtime log](tests/results/runtime-input-t4.log) and [visible T4 proof](tests/results/runtime-input-t4-proof.jpg) provide validation evidence. To reproduce on a T4 with the repository available:
+
+```bash
+python3 tests/benchmark_runtime.py --baseline a69f236 --repeats 3 --output benchmark-results/runtime-input
+python3 tests/benchmark.py --positive-window --workers 2097152 --capacity 4194304 --repeats 3 \
+  --variant runtime=b2568e0 --reference-report tests/results/combined-scan-t4.json \
+  --output benchmark-results/runtime-five-seed
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
 ## Acknowledgements
 I would like to give very large Thank You's to
 - [Andrew](https://github.com/Gaider10), for creating the [original version of the TreeCracker](https://github.com/Gaider10/TreeCracker) (alongside much of the test data) and a [population chunk reverser](https://github.com/Gaider10/PopulationCrr), and for answering a question about his tool.
