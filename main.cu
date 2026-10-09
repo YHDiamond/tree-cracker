@@ -1,42 +1,14 @@
 #include "src/Filters.cuh"
 #include <chrono>
 #include "src/Observation Input.cuh"
-#include <new>
-
-__global__ void prepareRuntimeObservations(const InputData *data, const size_t count, TreeChunk *chunks) {
-	for (size_t i = 0; i < count; ++i) chunks[i] = TreeChunk();
-	ABSOLUTE_POPULATION_CHUNKS_DATA = SetOfTreeChunks(data, count, chunks);
-}
-
-
 int main(int argc, char **argv) {
 	if (argc < 2 || argc > 3) {
 		std::fprintf(stderr, "Usage: %s observations.txt [output.txt]\n", argv[0]);
 		return 2;
 	}
-	std::vector<TreeObservation> observations;
-	try { observations = readTreeObservations(argv[1]); }
-	catch (const std::exception &error) { std::fprintf(stderr, "%s\n", error.what()); return 2; }
-	InputData *input;
 	TreeChunk *chunks;
-	TRY_CUDA(cudaMallocManaged(&input, observations.size() * sizeof(*input)));
-	TRY_CUDA(cudaMallocManaged(&chunks, observations.size() * sizeof(*chunks)));
-	for (size_t i = 0; i < observations.size(); ++i) {
-		new (input + i) InputData();
-		const TreeObservation &tree = observations[i];
-		input[i].version = static_cast<Version>(tree.version);
-		input[i].treeType = static_cast<TreeType>(tree.type);
-		input[i].biome = Biome::Forest;
-		input[i].coordinate.x = tree.x;
-		input[i].coordinate.z = tree.z;
-		input[i].trunkHeight.lowerBound = tree.heightMin;
-		input[i].trunkHeight.upperBound = tree.heightMax;
-		for (size_t j = 0; j < NUMBER_OF_LEAF_POSITIONS; ++j) input[i].leafStates[j] = static_cast<LeafState>(tree.leaves[j]);
-	}
-	prepareRuntimeObservations<<<1, 1>>>(input, observations.size(), chunks);
-	TRY_CUDA(cudaGetLastError());
-	TRY_CUDA(cudaDeviceSynchronize());
-	TRY_CUDA(cudaFree(input));
+	try { chunks = loadRuntimeTreeObservations(argv[1]); }
+	catch (const std::exception &error) { std::fprintf(stderr, "%s\n", error.what()); return 2; }
 	const char *outputFilepath = argc == 3 ? argv[2] : OUTPUT_FILEPATH;
 	std::string actualFilepath = outputFilepath;
 	FILE *outputFile = NULL;

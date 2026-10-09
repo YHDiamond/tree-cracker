@@ -7,13 +7,12 @@
    result capacity. The benchmark inserts the variant's unchanged filter1 CUDA
    launch block at FILTER1_LAUNCH_FROM_MAIN below before compilation. */
 #include "../src/Filters.cuh"
+#include "../src/Observation Input.cuh"
 #include <algorithm>
 #include <chrono>
 #include <vector>
 
 static_assert(!RELATIVE_COORDINATES_MODE, "Positive fixture tests use absolute positions");
-static_assert(ABSOLUTE_POPULATION_CHUNKS_DATA.numberOfTreeChunks == 1, "Each fixture must fit one population chunk");
-static_assert(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].biome == Biome::Forest && ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].version == Version::v1_16_1, "These regression fixtures are Java 1.16.1 Forest trees");
 static_assert(NUMBER_OF_WORKERS > 0 && NUMBER_OF_WORKERS <= (UINT64_C(1) << 24), "Use a bounded unit-test window, not a full search batch");
 static_assert(!(NUMBER_OF_WORKERS & (NUMBER_OF_WORKERS - 1)), "Power-of-two windows stay within the fixed X-coordinate state region");
 static_assert(NUMBER_OF_WORKERS % ACTUAL_WORKERS_PER_BLOCK == 0, "Keep the unit-test window aligned to complete GPU blocks");
@@ -68,10 +67,12 @@ static void requirePositive(const std::vector<uint64_t> &results, const uint64_t
 }
 
 int main(int argc, char **argv) {
-	if (argc != 2) ABORT("Usage: positive_windows VALIDATION_ONLY_STRUCTURE_SEED\n");
+	if (argc != 3) ABORT("Usage: positive_windows observations.txt VALIDATION_ONLY_STRUCTURE_SEED\n");
+	TreeChunk *chunks = loadRuntimeTreeObservations(argv[1]);
+	if (ABSOLUTE_POPULATION_CHUNKS_DATA.numberOfTreeChunks != 1 || ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].biome != Biome::Forest || ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].version != Version::v1_16_1) ABORT("Expected one Java 1.16.1 Forest chunk.\n");
 	char *end = nullptr;
-	const uint64_t expectedStructureSeed = std::strtoull(argv[1], &end, 10);
-	if (!*argv[1] || *end || expectedStructureSeed > LCG::MASK) ABORT("Expected a validation-only unsigned 48-bit structure seed.\n");
+	const uint64_t expectedStructureSeed = std::strtoull(argv[2], &end, 10);
+	if (!*argv[2] || *end || expectedStructureSeed > LCG::MASK) ABORT("Expected a validation-only unsigned 48-bit structure seed.\n");
 	currentPopulationChunkDataIndex = 0;
 	deriveKnownPositiveStates<<<1, 1>>>(expectedStructureSeed);
 	TRY_CUDA(cudaGetLastError());
