@@ -1,4 +1,4 @@
-"""CPU parity checks for the original and shared-coordinate filter2/3 scans.
+"""CPU parity checks for the original and indexed-coordinate filter2/3 scans.
 
 Run with ``python tests/test_filter_scan_parity.py``. These are CPU ports of
 the Java 1.16.1 Forest scan/predicates, not a CUDA build or end-to-end cracker.
@@ -137,7 +137,9 @@ def original_scan(seed, trees, attributes=False, radius=MAX_CALLS):
 
 
 def optimized_scan(seed, trees, attributes=False, radius=MAX_CALLS):
-    """b231ecf filter2/3: shared coordinates and monotone early completion."""
+    """Direct X/Z lookup with the same inclusive scan and RNG advancement."""
+    lookup = {(tree.x, tree.z): index for index, tree in enumerate(trees)}
+    assert len(lookup) == len(trees)  # TreeChunk merges types at one position.
     rng = JavaRandom(seed).skip(-radius)
     found = 0
     all_found = (1 << len(trees)) - 1
@@ -148,14 +150,11 @@ def optimized_scan(seed, trees, attributes=False, radius=MAX_CALLS):
         x = coordinate_rng.next_int(16)
         rng = coordinate_rng.copy()
         z = coordinate_rng.next_int(16)
-        for index, tree in enumerate(trees):
-            tree_mask = 1 << index
-            if found & tree_mask:
-                continue
-            if x != tree.x or z != tree.z:
-                continue
-            if matches_after_coordinates(coordinate_rng.copy(), tree, attributes):
-                found |= tree_mask
+        index = lookup.get((x, z))
+        if index is None or found & (1 << index):
+            continue
+        if matches_after_coordinates(coordinate_rng.copy(), trees[index], attributes):
+            found |= 1 << index
     return found
 
 

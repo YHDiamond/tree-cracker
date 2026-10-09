@@ -152,6 +152,14 @@ struct SetOfTreeChunks {
 				}
 			}
 		}
+		// Build after every tree/chunk permutation so lookup indices stay exact.
+		for (uint32_t i = 0; i < this->numberOfTreeChunks; ++i) {
+			TreeChunk &chunk = this->treeChunks[i];
+			for (uint32_t j = 0; j < chunk.numberOfTreePositions; ++j) {
+				const TreeChunkPosition &tree = chunk.treePositions[j];
+				chunk.treeIndexByCoordinates[16 * tree.populationChunkXOffset + tree.populationChunkZOffset] = j + 1;
+			}
+		}
 		this->collapseNearbySeedsFlag = this->treeChunks[0].version <= static_cast<Version>(ExperimentalVersion::v1_12_2);
 	}
 

@@ -174,15 +174,14 @@ void *filter2(void *dat) {
 		const uint32_t x = coordinateRandom.nextInt(16);
 		random = coordinateRandom;
 		const uint32_t z = coordinateRandom.nextInt(16);
-		#pragma unroll
-		for (uint32_t j = 0; j < chunk.numberOfTreePositions; j++) {
-			const uint32_t treeMask = UINT32_C(1) << j;
-			if (found & treeMask) continue;
-			const TreeChunkPosition &tree = chunk.treePositions[j];
-			if (x != tree.populationChunkXOffset || z != tree.populationChunkZOffset) continue;
-			Random treeRandom(coordinateRandom);
-			if (tree.possibleTreeTypes.isEmpty() || tree.possibleTreeTypes.contains(getNextTreeType(treeRandom, chunk.biome, chunk.version))) found |= treeMask;
-		}
+		const uint32_t indexPlusOne = chunk.treeIndexByCoordinates[16 * x + z];
+		if (!indexPlusOne) continue;
+		const uint32_t j = indexPlusOne - 1;
+		const uint32_t treeMask = UINT32_C(1) << j;
+		if (found & treeMask) continue;
+		const TreeChunkPosition &tree = chunk.treePositions[j];
+		Random treeRandom(coordinateRandom);
+		if (tree.possibleTreeTypes.isEmpty() || tree.possibleTreeTypes.contains(getNextTreeType(treeRandom, chunk.biome, chunk.version))) found |= treeMask;
 	}
 
 	if (found != allFound) FILTER_RETURN;
@@ -221,15 +220,14 @@ void *filter3(void *dat) {
 		const uint32_t x = coordinateRandom.nextInt(16);
 		random = coordinateRandom;
 		const uint32_t z = coordinateRandom.nextInt(16);
-		#pragma unroll
-		for (uint32_t j = 0; j < chunk.numberOfTreePositions; j++) {
-			const uint32_t treeMask = UINT32_C(1) << j;
-			if (found & treeMask) continue;
-			const TreeChunkPosition &tree = chunk.treePositions[j];
-			if (x != tree.populationChunkXOffset || z != tree.populationChunkZOffset) continue;
-			Random treeRandom(coordinateRandom);
-			if (tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) found |= treeMask;
-		}
+		const uint32_t indexPlusOne = chunk.treeIndexByCoordinates[16 * x + z];
+		if (!indexPlusOne) continue;
+		const uint32_t j = indexPlusOne - 1;
+		const uint32_t treeMask = UINT32_C(1) << j;
+		if (found & treeMask) continue;
+		const TreeChunkPosition &tree = chunk.treePositions[j];
+		Random treeRandom(coordinateRandom);
+		if (tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) found |= treeMask;
 	}
 
 	if (found != allFound) FILTER_RETURN;
