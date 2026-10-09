@@ -1,0 +1,103 @@
+Found 2 population chunks. (95.63 bits)
+Chunk #1: (71.72 bits)
+	Biome: Forest
+	Version: 1.16.1
+	Coordinate range: (0, 16) - (15, 31)
+	Tree #1: (23.91 bits)
+		Coordinate: (7, 26)
+		Possible tree types:
+		Birch: (13.58 bits)
+			Trunk height range: [5, 5]
+			Leaf states: 5 corner leaves placed, 12 total corner leaf states known
+	Tree #2: (23.91 bits)
+		Coordinate: (4, 19)
+		Possible tree types:
+		Birch: (13.58 bits)
+			Trunk height range: [6, 6]
+			Leaf states: 7 corner leaves placed, 12 total corner leaf states known
+	Tree #3: (23.91 bits)
+		Coordinate: (15, 24)
+		Possible tree types:
+		Birch: (13.58 bits)
+			Trunk height range: [7, 7]
+			Leaf states: 7 corner leaves placed, 12 total corner leaf states known
+Chunk #2: (23.91 bits)
+	Biome: Forest
+	Version: 1.16.1
+	Coordinate range: (0, 32) - (15, 47)
+	Tree #1: (23.91 bits)
+		Coordinate: (9, 35)
+		Possible tree types:
+		Birch: (13.58 bits)
+			Trunk height range: [7, 7]
+			Leaf states: 5 corner leaves placed, 12 total corner leaf states known
+
+
+NOTE: MAX_NUMBER_OF_RESULTS_PER_RUN was marked as AUTO; it was ultimately set as 134217727.
+
+Beginning partial run #1 of 16	(states [0, 1099511627775] out of 17592186044415).
+(Single Tree Filter: 1119019 results, 	Coords/Type Filter: 102664 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #2 of 16	(states [1099511627776, 2199023255551] out of 17592186044415).
+3.467 seconds	317.119 billion seeds/second	ETA: 51.994 seconds
+(Single Tree Filter: 1117248 results, 	Coords/Type Filter: 102622 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #3 of 16	(states [2199023255552, 3298534883327] out of 17592186044415).
+6.862 seconds	323.911 billion seeds/second	ETA: 47.510 seconds
+(Single Tree Filter: 1118469 results, 	Coords/Type Filter: 101866 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #4 of 16	(states [3298534883328, 4398046511103] out of 17592186044415).
+10.277 seconds	321.938 billion seeds/second	ETA: 44.385 seconds
+(Single Tree Filter: 1118838 results, 	Coords/Type Filter: 102218 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #5 of 16	(states [4398046511104, 5497558138879] out of 17592186044415).
+13.724 seconds	319.008 billion seeds/second	ETA: 41.346 seconds
+(Single Tree Filter: 1118342 results, 	Coords/Type Filter: 103004 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #6 of 16	(states [5497558138880, 6597069766655] out of 17592186044415).
+17.182 seconds	317.959 billion seeds/second	ETA: 38.025 seconds
+(Single Tree Filter: 1118973 results, 	Coords/Type Filter: 102320 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #7 of 16	(states [6597069766656, 7696581394431] out of 17592186044415).
+20.669 seconds	315.304 billion seeds/second	ETA: 34.858 seconds
+(Single Tree Filter: 1118846 results, 	Coords/Type Filter: 102554 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #8 of 16	(states [7696581394432, 8796093022207] out of 17592186044415).
+24.155 seconds	315.355 billion seeds/second	ETA: 31.366 seconds
+(Single Tree Filter: 1118090 results, 	Coords/Type Filter: 103440 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #9 of 16	(states [8796093022208, 9895604649983] out of 17592186044415).
+27.679 seconds	312.041 billion seeds/second	ETA: 28.175 seconds
+(Single Tree Filter: 1118467 results, 	Coords/Type Filter: 102009 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #10 of 16	(states [9895604649984, 10995116277759] out of 17592186044415).
+31.246 seconds	308.258 billion seeds/second	ETA: 24.954 seconds
+(Single Tree Filter: 1118283 results, 	Coords/Type Filter: 102525 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #11 of 16	(states [10995116277760, 12094627905535] out of 17592186044415).
+34.829 seconds	306.863 billion seeds/second	ETA: 21.484 seconds
+(Single Tree Filter: 1119665 results, 	Coords/Type Filter: 102927 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #12 of 16	(states [12094627905536, 13194139533311] out of 17592186044415).
+38.422 seconds	306.024 billion seeds/second	ETA: 17.950 seconds
+128110318218222
+(Single Tree Filter: 1117465 results, 	Coords/Type Filter: 102714 results, 	Coords/Type/Attributes Filter: 1 result, 	Treechunk Filter: 6 results, 	Population Chunk Reversal: 6 results
+ Treechunk Recovery: 6 results, 	Coords/Type Filter: 162 results, 	Coords/Type/Attributes Filter: 22 results, 	Treechunk Filter: 1 result)
+
+Beginning partial run #13 of 16	(states [13194139533312, 14293651161087] out of 17592186044415).
+42.071 seconds	301.304 billion seeds/second	ETA: 14.582 seconds
+(Single Tree Filter: 1119069 results, 	Coords/Type Filter: 102620 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #14 of 16	(states [14293651161088, 15393162788863] out of 17592186044415).
+45.746 seconds	299.219 billion seeds/second	ETA: 11.009 seconds
+(Single Tree Filter: 1119071 results, 	Coords/Type Filter: 102555 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #15 of 16	(states [15393162788864, 16492674416639] out of 17592186044415).
+49.418 seconds	299.415 billion seeds/second	ETA: 7.330 seconds
+(Single Tree Filter: 1117724 results, 	Coords/Type Filter: 102536 results, 	Coords/Type/Attributes Filter: 0 results)
+
+Beginning partial run #16 of 16	(states [16492674416640, 17592186044415] out of 17592186044415).
+53.122 seconds	296.845 billion seeds/second	ETA: 3.690 seconds
+(Single Tree Filter: 1119368 results, 	Coords/Type Filter: 103459 results, 	Coords/Type/Attributes Filter: 0 results)
+
+
