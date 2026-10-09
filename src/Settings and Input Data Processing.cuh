@@ -1,7 +1,7 @@
 #ifndef __GENERATE_AND_VALIDATE_DATA_CUH
 #define __GENERATE_AND_VALIDATE_DATA_CUH
 
-#include "..\Settings (MODIFY THIS).cuh"
+#include "../Settings (MODIFY THIS).cuh"
 #include "Trees Logic.cuh"
 
 __managed__ uint32_t currentPopulationChunkDataIndex = 0;

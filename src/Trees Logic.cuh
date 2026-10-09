@@ -811,10 +811,10 @@ struct TreeChunk {
 				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, TreeType::Birch).birchAttributes = BirchAttributes(treeData.trunkHeight, SetOfLeafStates(treeData.leafStates, this->version));
 				break;
 			case static_cast<TreeType>(ExperimentalTreeType::Pine):
-				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, static_cast<TreeType>(ExperimentalTreeType::Pine)).pineAttributes = PineAttributes(treeData.trunkHeight, treeData.leavesHeight, treeData.pineLeavesWidestRadius);
+				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, static_cast<TreeType>(ExperimentalTreeType::Pine)).pineAttributes = PineAttributes(treeData.trunkHeight, treeData.pine.leavesHeight, treeData.pine.pineLeavesWidestRadius);
 				break;
 			case static_cast<TreeType>(ExperimentalTreeType::Spruce):
-				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, static_cast<TreeType>(ExperimentalTreeType::Spruce)).spruceAttributes = SpruceAttributes(treeData.trunkHeight, treeData.logsBelowBottommostLeaves, treeData.spruceLeavesWidestRadius, treeData.topmostLeavesRadius, treeData.leavesAboveTrunk);
+				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, static_cast<TreeType>(ExperimentalTreeType::Spruce)).spruceAttributes = SpruceAttributes(treeData.trunkHeight, treeData.spruce.logsBelowBottommostLeaves, treeData.spruce.spruceLeavesWidestRadius, treeData.spruce.topmostLeavesRadius, treeData.spruce.leavesAboveTrunk);
 				break;
 			case TreeType::Unknown:
 				this->createNewTree(treeData.coordinate.x, treeData.coordinate.z, TreeType::Unknown);

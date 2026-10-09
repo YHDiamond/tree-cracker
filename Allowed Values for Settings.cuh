@@ -157,12 +157,12 @@ struct InputData {
 		struct {
 			PossibleHeightsRange leavesHeight;
 			PossibleRadiiRange pineLeavesWidestRadius;
-		};
+		} pine;
 		// Spruce
 		struct {
 			PossibleHeightsRange logsBelowBottommostLeaves, leavesAboveTrunk;
 			PossibleRadiiRange spruceLeavesWidestRadius, topmostLeavesRadius;
-		};
+		} spruce;
 	};
 	// TODO: Have AUTO/Unknown TreeType replaced with exact tree type if specified biome only contains one type of tree
 	// Unknown tree/Generic constructor, trunkHeight unknown
@@ -196,8 +196,7 @@ struct InputData {
 		coordinate(coordinate),
 		biome(biome),
 		trunkHeight(trunkHeight),
-		pineLeavesWidestRadius(leavesWidestRadius),
-		leavesHeight(leavesHeight) {};
+		pine{leavesHeight, leavesWidestRadius} {};
 	// Spruce tree constructor
 	constexpr InputData(const Version version, const TreeType treeType, const Coordinate &coordinate, const Biome biome, const PossibleHeightsRange &trunkHeight, const PossibleHeightsRange &logsBelowBottommostLeaves, const PossibleHeightsRange &leavesAboveTrunk, const PossibleRadiiRange &leavesWidestRadius, const PossibleRadiiRange &topmostLeavesRadius) noexcept :
 		version(version),
@@ -205,10 +204,7 @@ struct InputData {
 		coordinate(coordinate),
 		biome(biome),
 		trunkHeight(trunkHeight),
-		logsBelowBottommostLeaves(logsBelowBottommostLeaves),
-		leavesAboveTrunk(leavesAboveTrunk),
-		spruceLeavesWidestRadius(leavesWidestRadius),
-		topmostLeavesRadius(topmostLeavesRadius) {};
+		spruce{logsBelowBottommostLeaves, leavesAboveTrunk, leavesWidestRadius, topmostLeavesRadius} {};
 
 	__host__ __device__ constexpr InputData() noexcept :
 		version(),
@@ -228,14 +224,14 @@ struct InputData {
 					for (uint32_t i = 0; i < NUMBER_OF_LEAF_POSITIONS; ++i) this->leafStates[i] = other.leafStates[i];
 					break;
 				case static_cast<TreeType>(ExperimentalTreeType::Pine):
-					this->pineLeavesWidestRadius = other.pineLeavesWidestRadius;
-					this->leavesHeight = other.leavesHeight;
+					this->pine.pineLeavesWidestRadius = other.pine.pineLeavesWidestRadius;
+					this->pine.leavesHeight = other.pine.leavesHeight;
 					break;
 				case static_cast<TreeType>(ExperimentalTreeType::Spruce):
-					this->logsBelowBottommostLeaves = other.logsBelowBottommostLeaves;
-					this->leavesAboveTrunk = other.leavesAboveTrunk;
-					this->spruceLeavesWidestRadius = other.spruceLeavesWidestRadius;
-					this->topmostLeavesRadius = other.topmostLeavesRadius;
+					this->spruce.logsBelowBottommostLeaves = other.spruce.logsBelowBottommostLeaves;
+					this->spruce.leavesAboveTrunk = other.spruce.leavesAboveTrunk;
+					this->spruce.spruceLeavesWidestRadius = other.spruce.spruceLeavesWidestRadius;
+					this->spruce.topmostLeavesRadius = other.spruce.topmostLeavesRadius;
 			}
 		}
 };
