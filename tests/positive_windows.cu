@@ -18,8 +18,8 @@ static_assert(NUMBER_OF_WORKERS > 0 && NUMBER_OF_WORKERS <= (UINT64_C(1) << 24),
 static_assert(!(NUMBER_OF_WORKERS & (NUMBER_OF_WORKERS - 1)), "Power-of-two windows stay within the fixed X-coordinate state region");
 static_assert(NUMBER_OF_WORKERS % ACTUAL_WORKERS_PER_BLOCK == 0, "Keep the unit-test window aligned to complete GPU blocks");
 
-// Forest permits at most ten tree attempts. This storage is test data only.
-__managed__ uint64_t validationPrimaryStates[1024];
+// Forest permits ten attempts, plus a possible eleventh. Test data only.
+__managed__ uint64_t validationPrimaryStates[1 << 11];
 __managed__ uint32_t validationPrimaryCount = 0;
 __managed__ uint64_t validationTreechunkState = 0;
 
@@ -31,7 +31,7 @@ __global__ void deriveKnownPositiveStates(const uint64_t validationStructureSeed
 	Random start(populationSeed + chunk.salt);
 	validationTreechunkState = start.seed;
 	const uint32_t treeCount = biomeTreeCount(start, chunk.biome, chunk.version);
-	if (treeCount > 10) return;
+	if (treeCount > 11) return;
 	const uint32_t required = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
 	for (uint32_t validMask = 0; validMask < (UINT32_C(1) << treeCount); ++validMask) {
 		Random random(start);
