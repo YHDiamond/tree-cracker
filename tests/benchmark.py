@@ -52,6 +52,14 @@ def prepare(revision, fixture, destination, workers, capacity, profile_batches):
     text = text.replace('PRINT_TIMESTAMPS_FREQUENCY = 256;', 'PRINT_TIMESTAMPS_FREQUENCY = 1;')
     text = text.replace('"output.txt"', '"results.txt"')
     p.write_text(text)
+    # The original primary kernel launches one extra block. Clip that block
+    # for a controlled diagnostic window, so every variant tests the same states.
+    p = destination / 'src/Filters.cuh'
+    text = p.read_text()
+    old = '__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start) {\n\tuint32_t index = blockIdx.x * blockDim.x + threadIdx.x;'
+    new = '__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start) {\n\tuint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;\n\tif (index >= NUMBER_OF_WORKERS) FILTER_RETURN;'
+    text = text.replace(old, new)
+    p.write_text(text)
     if profile_batches:
         p = destination / 'main.cu'
         text = p.read_text()
@@ -69,10 +77,11 @@ def main():
     ap.add_argument('--workers', type=int, default=1 << 28)
     ap.add_argument('--capacity', type=int, default=1 << 24)
     ap.add_argument('--profile-batches', type=int, default=0)
+    ap.add_argument('--repeats', type=int, default=1)
     ap.add_argument('--case', action='append', help='optional fixture ID filter')
     args = ap.parse_args()
     args.output = args.output.resolve()
-    assert args.workers > 0 and args.capacity > 0 and args.profile_batches >= 0
+    assert args.workers > 0 and args.capacity > 0 and args.profile_batches >= 0 and args.repeats > 0
     fixtures = json.loads((ROOT / 'Test Data/positions_types_fixture_candidates.json').read_text())['fixtures']
     assert len(fixtures) == 5 and len({f['validation_only']['world_seed'] for f in fixtures}) == 5
     if args.case:
@@ -83,7 +92,8 @@ def main():
     report = {'hardware': gpu, 'compiler': command(['nvcc', '--version']),
               'exhaustive': not bool(args.profile_batches),
               'workers': args.workers, 'capacity': args.capacity, 'flags': FLAGS,
-              'profile_batches': args.profile_batches, 'results': []}
+              'profile_batches': args.profile_batches, 'repeats': args.repeats,
+              'controlled_worker_bounds': True, 'results': []}
     env = os.environ.copy()
     env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + env.get('LD_LIBRARY_PATH', '')
     references = {}
@@ -100,38 +110,41 @@ def main():
                 subprocess.run(['nvcc', 'main.cu', '-o', 'main'] + FLAGS, cwd=target, stdout=log, stderr=subprocess.STDOUT, check=True)
             build_seconds = time.monotonic() - start
             print(f'RUN {name} {fixture["id"]} build={build_seconds:.3f}s', flush=True)
-            start = time.monotonic()
-            with (target / 'run.log').open('w') as log:
-                proc = subprocess.Popen([str(target / 'main')], cwd=target, env=env,
-                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                for line in proc.stdout:
-                    log.write(line)
-                    log.flush()
-                    print(line, end='', flush=True)
-                exit_code = proc.wait()
-            seconds = time.monotonic() - start
-            log_text = (target / 'run.log').read_text()
-            candidates = sorted(set(map(int, (target / 'results.txt').read_text().splitlines())))
-            valid = exit_code == 0 and 'ignoring last' not in log_text
-            digest = hashlib.sha256(json.dumps(candidates, separators=(',', ':')).encode()).hexdigest()
-            row = {'variant': name, 'commit': sha, 'case': fixture['id'], 'seconds': seconds,
-                   'build_seconds': build_seconds, 'exit_code': exit_code, 'valid': valid,
-                   'candidate_count': len(candidates), 'candidate_sha256': digest,
-                   'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
-                   'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}
-            if fixture['id'] not in references:
-                references[fixture['id']] = (candidates, valid)
-                row['same_output'] = True
-            else:
-                previous, previous_valid = references[fixture['id']]
-                row['same_output'] = valid and previous_valid and candidates == previous
-            report['results'].append(row)
-            (args.output / 'report.json').write_text(json.dumps(report, indent=2))
-            print('RESULT ' + json.dumps(row), flush=True)
-            assert valid, row
-            assert row['same_output'], row
-            if report['exhaustive']:
-                assert row['expected_recovered'], row
+            for repeat in range(args.repeats):
+                start = time.monotonic()
+                with (target / f'run-{repeat}.log').open('w') as log:
+                    proc = subprocess.Popen([str(target / 'main')], cwd=target, env=env,
+                                            text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    for line in proc.stdout:
+                        log.write(line)
+                        log.flush()
+                        print(line, end='', flush=True)
+                    exit_code = proc.wait()
+                seconds = time.monotonic() - start
+                log_text = (target / f'run-{repeat}.log').read_text()
+                candidates = sorted(set(map(int, (target / 'results.txt').read_text().splitlines())))
+                valid = exit_code == 0 and 'ignoring last' not in log_text
+                digest = hashlib.sha256(json.dumps(candidates, separators=(',', ':')).encode()).hexdigest()
+                row = {'variant': name, 'commit': sha, 'case': fixture['id'], 'seconds': seconds,
+                       'build_seconds': build_seconds, 'repeat': repeat, 'exit_code': exit_code, 'valid': valid,
+                       'candidate_count': len(candidates), 'candidate_sha256': digest,
+                       'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
+                       'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}
+                if fixture['id'] not in references:
+                    references[fixture['id']] = (candidates, valid)
+                    row['same_output'] = True
+                else:
+                    previous, previous_valid = references[fixture['id']]
+                    row['same_output'] = valid and previous_valid and candidates == previous
+                report['results'].append(row)
+                (args.output / 'report.json').write_text(json.dumps(report, indent=2))
+                (target / 'results.txt').rename(target / f'results-{repeat}.txt')
+                print('RESULT ' + json.dumps(row), flush=True)
+                assert valid, row
+                assert row['same_output'], row
+                if report['exhaustive']:
+                    assert row['expected_recovered'], row
+
 
 
 if __name__ == '__main__':
