@@ -62,6 +62,14 @@ def prepare(revision, fixture, destination, workers, capacity, profile_batches, 
     old = '__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start) {\n\tuint32_t index = blockIdx.x * blockDim.x + threadIdx.x;'
     new = '__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start) {\n\tuint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x;\n\tif (index >= NUMBER_OF_WORKERS) FILTER_RETURN;'
     text = text.replace(old, new)
+    begin = text.index('__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void treechunkFilter()')
+    end = text.index('/* Reverses population seeds', begin)
+    section = text[begin:end]
+    if 'uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;' in section:
+        fixed = subprocess.check_output(['git', 'show', '87d3675:src/Filters.cuh'], cwd=ROOT, text=True)
+        a = fixed.index('__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void treechunkFilter()')
+        b = fixed.index('/* Reverses population seeds', a)
+        text = text[:begin] + fixed[a:b] + text[end:]
     p.write_text(text)
     if profile_batches:
         p = destination / 'main.cu'
@@ -83,6 +91,13 @@ def prepare(revision, fixture, destination, workers, capacity, profile_batches, 
         test_source = (ROOT / 'tests/positive_windows.cu').read_text()
         assert test_source.count('// FILTER1_LAUNCH_FROM_MAIN') == 1
         test_source = test_source.replace('// FILTER1_LAUNCH_FROM_MAIN', launch)
+        begin = main_source.index('// Treechunk filter (States able to generate')
+        begin = main_source.index('#if CUDA_IS_PRESENT', begin) + len('#if CUDA_IS_PRESENT')
+        end = main_source.index('#else', begin)
+        launch = main_source[begin:end].strip()
+        assert 'treechunkFilter<<<' in launch
+        assert test_source.count('// TREECHUNK_LAUNCH_FROM_MAIN') == 1
+        test_source = test_source.replace('// TREECHUNK_LAUNCH_FROM_MAIN', launch)
         (destination / 'tests').mkdir(exist_ok=True)
         (destination / 'tests/positive_windows.cu').write_text(test_source)
 
@@ -119,7 +134,7 @@ def main():
               'validation_only': args.positive_window,
               'workers': args.workers, 'capacity': args.capacity, 'flags': FLAGS,
               'profile_batches': args.profile_batches, 'repeats': args.repeats,
-              'controlled_worker_bounds': True, 'results': []}
+              'controlled_worker_bounds': True, 'corrected_64bit_treechunk_indices': True, 'results': []}
     env = os.environ.copy()
     env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + env.get('LD_LIBRARY_PATH', '')
     references = {}
@@ -163,6 +178,8 @@ def main():
                        'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
                        'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}
                 if args.positive_window:
+                    timing = re.search(r'passed=true exhaustive=false seconds=([0-9.]+)', log_text)
+                    row['pipeline_seconds'] = float(timing.group(1)) if timing else None
                     match = re.search(r'window=\[(\d+),(\d+)\)', log_text)
                     row['tested_state_window'] = list(map(int, match.groups())) if match else None
                     row['validation_only'] = True

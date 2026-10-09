@@ -112,11 +112,7 @@ int main(int argc, char **argv) {
 		TRY_CUDA(cudaGetSymbolAddress(&masks, filter3_masks));
 		TRY_CUDA(cudaMemsetAsync(masks, 0, sizeof(filter3_masks)));
 	}
-	const uint64_t treechunkWorkers = filter3_numberOfResultsThisWorkerSet *
-		(ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxCalls() + 1) *
-		twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxTreeCount());
-	if (treechunkWorkers > UINT32_MAX) ABORT("UNIT_REGRESSION invalid: treechunk test dispatch exceeds existing 32-bit indexing.\n");
-	treechunkFilter<<<treechunkWorkers / ACTUAL_WORKERS_PER_BLOCK + 1, ACTUAL_WORKERS_PER_BLOCK>>>();
+	// TREECHUNK_LAUNCH_FROM_MAIN
 	TRY_CUDA(cudaGetLastError());
 	TRY_CUDA(cudaDeviceSynchronize());
 	const auto treechunkResults = checkedSortedResults(TREECHUNK_FILTER_OUTPUT, treechunkFilter_numberOfResultsThisWorkerSet, "treechunkFilter");
