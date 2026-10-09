@@ -624,6 +624,14 @@ struct TreeChunkPosition {
 	// Returns if a Random instance, given a specified biome and version, would generate a tree matching the specified tree's possible types and type-specific attributes.
 	__device__ bool testTypeAndAttributes(Random &random, const Biome biome, const Version version) const {
 		if (this->possibleTreeTypes.isEmpty()) return true;
+		if (this->possibleTreeTypes.treeTypeFlags == (UINT32_C(1) << static_cast<uint32_t>(TreeType::Birch)) &&
+			biome == Biome::Forest && version > static_cast<Version>(ExperimentalVersion::v1_12_2)) {
+			if (random.nextFloat() >= 0.2f) {
+				random.skip<1>(); // Preserve the rejected Oak/Fancy Oak selector's RNG advancement.
+				return false;
+			}
+			return this->birchAttributes.canBeGeneratedBy(random, version);
+		}
 		TreeType type = getNextTreeType(random, biome, version);
 		if (!this->possibleTreeTypes.contains(type)) return false;
 

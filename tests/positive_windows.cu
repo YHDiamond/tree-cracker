@@ -39,7 +39,7 @@ __device__ bool referenceLeafPredicate(Random &random, const uint32_t mask, cons
 __global__ void validateLeafPredicateAndRewind() {
 	const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
 	const uint64_t state = (UINT64_C(0xabcdef12345) + index * UINT64_C(0x123456789ab)) & LCG::MASK;
-	const Version version = static_cast<Version>(3 + (index % 4));
+	const Version version = static_cast<Version>(3 + (index / 1024));
 	Random samples = Random::withSeed(state);
 	if (Version::v1_14_4 < version && version <= Version::v1_16_1) samples.skip<2>();
 	uint32_t placed = 0;
@@ -50,9 +50,16 @@ __global__ void validateLeafPredicateAndRewind() {
 	Random actual = Random::withSeed(state), reference(actual);
 	const bool expected = referenceLeafPredicate(reference, mask, version);
 	const bool result = SetOfLeafStates(mask).canBeGeneratedBy(actual, version);
+	TreeChunkPosition birch;
+	birch.possibleTreeTypes.add(TreeType::Birch);
+	birch.birchAttributes.leafStates = SetOfLeafStates(mask);
+	Random selectorActual = Random::withSeed(state), selectorReference(selectorActual);
+	const bool selectorResult = birch.testTypeAndAttributes(selectorActual, Biome::Forest, version);
+	const TreeType selectedType = getNextTreeType(selectorReference, Biome::Forest, version);
+	const bool selectorExpected = selectedType == TreeType::Birch && birch.birchAttributes.canBeGeneratedBy(selectorReference, version);
 	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0];
 	const uint64_t rewind = (state * chunk.scanStartLCG.multiplier + chunk.scanStartLCG.addend) & LCG::MASK;
-	if (result != expected || actual.seed != reference.seed || rewind != Random::withSeed(state).skip(-chunk.maxCalls).seed)
+	if (result != expected || actual.seed != reference.seed || selectorResult != selectorExpected || selectorActual.seed != selectorReference.seed || rewind != Random::withSeed(state).skip(-chunk.maxCalls).seed)
 		atomicAdd(&validationPredicateFailures, 1u);
 }
 
