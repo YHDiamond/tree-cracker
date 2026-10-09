@@ -77,6 +77,54 @@ As mentioned in step 2, the program's runtime can vary wildly based on one's inp
 
 WARNING: When checking the outputted worldseeds, some generated trees may not match your input data. (Tree generation depends on the order that chunks are loaded, so if the chunks are loaded in a different order than your input data's source, a different pattern of trees will form.) However, in most cases at least a few trees will match your input data; if *every* tree is different, that is an indication your original input data (or this tool) are likely wrong.
 
+## Java 1.16.1 CUDA benchmark (October 2026)
+
+This fork optimizes the existing Java-LCG and valid/invalid tree-attempt search. Production inference still searches the entire 2^44-state absolute-coordinate domain. The tree RNG model and acceptance predicates are unchanged. The integrated changes enumerate exact primary Z intervals, share coordinate work in the neighboring-state scans, and share/prune valid/invalid attempt prefixes in the treechunk filter.
+
+Two existing correctness issues were repaired before performance comparisons: host access to device-only result buffers could discard candidates, and 32-bit treechunk indexing could omit states in large launches. Comparisons use these repairs consistently and reject every overflowing run. The old Linux port returned one candidate on `TEST_DATA_16_1_2`; corrected host access returns the documented four candidates, including `157527116063087`.
+
+All measurements used the same allocated Tesla T4: UUID `GPU-2891ecda-a53e-c564-6771-d543407075ff`, driver 580.82.07, CUDA 13.0.88. Compilation is excluded from solve times. Complete measurements, pinned source commits, flags, input hashes, test windows and candidate sets are in [the five-seed report](tests/results/five-seed-t4.json), [the combination report](tests/results/combined-scan-t4.json), and [the exhaustive reference report](tests/results/reference-t4.json).
+
+The five fixtures contain two public examples and three instrumented development-world Forest chunks. Each test input has absolute X/Z and tree type; heights and leaf corners are unknown. Development chunk biomes were verified from their development saves. No blind records were opened. These tests validate the standalone cracker with supplied tree observations; they do not measure video extraction or blind evaluation.
+
+The following are median **validation-only regression** pipeline times in seconds, three repeats per fixture, over identical windows of 2^21 states with capacity 2^22. Known seeds locate positive windows only in the test executable, so every run must retain a real expected seed. Production inference never reads those validation seeds. These timings include stage-by-stage test checks and must not be interpreted as exhaustive seed recovery times.
+
+| Variant | Public 4 trees | Public 5 trees | Dev 9 trees | Dev 8 trees | Dev 10 trees |
+|---|---:|---:|---:|---:|---:|
+| Corrected baseline | 10.908249 | 1.158632 | 0.083872 | 0.410807 | 0.059132 |
+| Shared scan | 10.910895 | 1.159273 | 0.063400 | 0.418232 | 0.049571 |
+| Primary intervals | 10.908272 | 1.159967 | 0.079580 | 0.412385 | 0.057368 |
+| 128-thread blocks / sort | 10.909658 | 1.162082 | 0.080481 | 0.415300 | 0.055784 |
+| Primary + prefix search | 0.217338 | 0.068668 | 0.053583 | 0.067597 | 0.048405 |
+| Primary + prefix search + scan | 0.217542 | 0.065370 | 0.043956 | 0.054954 | 0.057434 |
+
+All 90 GPU regression runs passed with identical sorted candidate sets and all five expected seeds retained. The per-fixture candidate counts were 27, 4, 1, 2 and 3. Sixteen CPU tests cover interval arithmetic, Java-LCG scan parity, 64-bit dispatch and prefix-search equivalence.
+
+The complete, documented `TEST_DATA_16_1_2` example retains its trunk-height and leaf-corner observations. On the same T4, corrected baseline took **232.033 s**, primary intervals **105.001 s**, primary plus prefix search **72.310 s**, and adding the shared scan **65.881 s median** over three full runs (65.874–70.990 s), a **3.52×** speedup over the corrected baseline. Every exhaustive run returned exactly `[89593286004526, 115468527086863, 157527116063087, 272740909957168]`. These are 48-bit structure seeds; no unique 64-bit world seed is claimed.
+
+An initial four-tree positions/types-only diagnostic took 87.235 s for its first 2^24 primary states before the 32-bit treechunk indexing defect was found. Its candidate set was incomplete and is excluded from correctness comparisons. An exhaustive run would take years if that diagnostic rate persisted. Five exhaustive positions/types-only recoveries were not performed; the five positive regression tests and the rich full-domain example are reported separately.
+
+Reproduce the fixed five-seed comparisons from this branch on one CUDA GPU:
+
+```bash
+python3 tests/benchmark.py --positive-window --workers 2097152 --capacity 4194304 --repeats 3 \
+  --variant baseline=87d3675 --variant scan=b231ecf --variant primary=cf41a29 \
+  --variant host=2d338c1 --variant primary-dfs=9ddaf10 --output benchmark-results/five-seed
+python3 tests/benchmark.py --positive-window --workers 2097152 --capacity 4194304 --repeats 3 \
+  --variant combined-scan=de9371e --reference-report benchmark-results/five-seed/report.json \
+  --output benchmark-results/combined-scan
+python3 -m unittest discover -s tests -v
+```
+
+The output path must be new. Omit `--positive-window` for the exhaustive positions/types-only search, which requires far more GPU time. `--profile-batches` explicitly selects an incomplete first-window diagnostic. The reports label these modes and refuse comparisons after the GPU allocation or benchmark configuration changes.
+
+For the documented full example, remove the placeholder `INPUT_DATA` array from the Settings file and define `INPUT_DATA` as `TEST_DATA_16_1_2`. Keep the existing default domain, batch size and sixteen partial runs. On the tested Linux/Colab CUDA 13 environment:
+
+```bash
+nvcc main.cu -o main -O3 -arch=sm_75 -Xcompiler=-mcmodel=large -Xlinker=--no-relax --cudart=shared
+LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-} ./main
+```
+
 ## Acknowledgements
 I would like to give very large Thank You's to
 - [Andrew](https://github.com/Gaider10), for creating the [original version of the TreeCracker](https://github.com/Gaider10/TreeCracker) (alongside much of the test data) and a [population chunk reverser](https://github.com/Gaider10/PopulationCrr), and for answering a question about his tool.

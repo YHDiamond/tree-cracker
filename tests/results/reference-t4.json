@@ -37,8 +37,104 @@
       ],
       "exit_code": 0,
       "storage_correction": true
+    },
+    {
+      "commit": "4e0bbd214594e94197ea57fd01d19fa4e49741df",
+      "seconds": 105.001,
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "variant": "primary",
+      "storage_correction": true,
+      "treechunk_index_correction": true
+    },
+    {
+      "commit": "cf1214b15ab6d536728925d297358aa903c89ebe",
+      "seconds": 72.31,
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "variant": "primary-dfs",
+      "storage_correction": true,
+      "treechunk_index_correction": true
+    },
+    {
+      "commit": "de9371e8d68390035ce7e8b4f4aea14370006e2d",
+      "seconds": 65.874,
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "variant": "primary-dfs-scan",
+      "storage_correction": true,
+      "treechunk_index_correction": true,
+      "repeats": [
+        {
+          "repeat": 0,
+          "seconds": 65.874,
+          "candidate_set": [
+            89593286004526,
+            115468527086863,
+            157527116063087,
+            272740909957168
+          ],
+          "same_output": true,
+          "exhaustive": true
+        },
+        {
+          "repeat": 1,
+          "seconds": 65.88119762199949,
+          "candidate_set": [
+            89593286004526,
+            115468527086863,
+            157527116063087,
+            272740909957168
+          ],
+          "same_output": true,
+          "exhaustive": true
+        },
+        {
+          "repeat": 2,
+          "seconds": 70.98960736400022,
+          "candidate_set": [
+            89593286004526,
+            115468527086863,
+            157527116063087,
+            272740909957168
+          ],
+          "same_output": true,
+          "exhaustive": true
+        }
+      ]
     }
   ],
-  "evidence": "Displayed complete solver logs in cells 5 and 6 of the Colab notebook, including every partial run and sorted final candidates.",
-  "notebook": "https://colab.research.google.com/drive/1Wv5HdU7Ez0_BfA0L5xdGsCmhQxJkI0g4"
+  "evidence": "Complete solver logs, every partial run, and final candidates displayed in Colab cells 5, 6, 11, 12 and 14. Repeated winner runs appear in cell 15.",
+  "notebook": "https://colab.research.google.com/drive/1Wv5HdU7Ez0_BfA0L5xdGsCmhQxJkI0g4",
+  "winner_summary": {
+    "commit": "de9371e8d68390035ce7e8b4f4aea14370006e2d",
+    "median_seconds": 65.88119762199949,
+    "range_seconds": [
+      65.874,
+      70.98960736400022
+    ],
+    "speedup_vs_corrected_baseline": 3.5219912262572164,
+    "candidate_set": [
+      89593286004526,
+      115468527086863,
+      157527116063087,
+      272740909957168
+    ]
+  },
+  "max_results_per_run": 134217727
 }
