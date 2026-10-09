@@ -162,35 +162,30 @@ void *filter2(void *dat) {
 
 	uint64_t seed = FILTER_2_INPUT[index];
 
+	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
+	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
 	uint32_t found = 0;
-	// Random random = Random::withSeed(seed);
-	// int32_t calls = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls;
-	// if (calls & 256) random.skip<-256>();
-	// if (calls & 128) random.skip<-128>();
-	// if (calls & 64) random.skip<-64>();
-	// if (calls & 32) random.skip<-32>();
-	// if (calls & 16) random.skip<-16>();
-	// if (calls & 8) random.skip<-8>();
-	// if (calls & 4) random.skip<-4>();
-	// if (calls & 2) random.skip<-2>();
-	// if (calls & 1) random.skip<-1>();
-	Random random = Random::withSeed(seed).skip(-ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls);
+	Random random = Random::withSeed(seed).skip(-chunk.maxCalls);
 
-	for (int32_t _currentCall = -ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls; _currentCall <= ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls; ++_currentCall) {
+	for (int32_t currentCall = -chunk.maxCalls; currentCall <= chunk.maxCalls && found != allFound; ++currentCall) {
+		// Every tree test starts with the same two nextInt(16) calls. Share
+		// their results, while advancing the scanned state by exactly one call.
+		Random coordinateRandom(random);
+		const uint32_t x = coordinateRandom.nextInt(16);
+		random = coordinateRandom;
+		const uint32_t z = coordinateRandom.nextInt(16);
 		#pragma unroll
-		for (uint32_t j = 0; j < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions; j++) {
-			Random treeRandom(random);
-			// if (RELATIVE_COORDINATES_MODE) {
-				// treeRandom.skip<2>();
-				// if (RELATIVE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].treePositions[j].testType(treeRandom, RELATIVE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].biome, RELATIVE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].version)) found |= UINT32_C(1) << j;
-			// } else {
-				if (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].treePositions[j].testXZAndType(treeRandom, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].biome, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].version)) found |= UINT32_C(1) << j;
-			// }
+		for (uint32_t j = 0; j < chunk.numberOfTreePositions; j++) {
+			const uint32_t treeMask = UINT32_C(1) << j;
+			if (found & treeMask) continue;
+			const TreeChunkPosition &tree = chunk.treePositions[j];
+			if (x != tree.populationChunkXOffset || z != tree.populationChunkZOffset) continue;
+			Random treeRandom(coordinateRandom);
+			if (tree.possibleTreeTypes.isEmpty() || tree.possibleTreeTypes.contains(getNextTreeType(treeRandom, chunk.biome, chunk.version))) found |= treeMask;
 		}
-		random.skip<1>();
 	}
 
-	if (found != ((UINT32_C(1) << ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) - 1)) FILTER_RETURN;
+	if (found != allFound) FILTER_RETURN;
 	uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&filter2_numberOfResultsThisWorkerSet), 1);
 	if (resultIndex >= ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_RETURN;
 	FILTER_2_OUTPUT[resultIndex] = seed;
@@ -216,32 +211,28 @@ void *filter3(void *dat) {
 	if (index >= filter2_numberOfResultsThisWorkerSet) FILTER_RETURN;
 	uint64_t seed = FILTER_3_INPUT[index];
 
+	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
+	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
 	uint32_t found = 0;
-	// Random random = Random::withSeed(seed);
-	// int32_t calls = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls;
-	// if (calls & 256) random.skip<-256>();
-	// if (calls & 128) random.skip<-128>();
-	// if (calls & 64) random.skip<-64>();
-	// if (calls & 32) random.skip<-32>();
-	// if (calls & 16) random.skip<-16>();
-	// if (calls & 8) random.skip<-8>();
-	// if (calls & 4) random.skip<-4>();
-	// if (calls & 2) random.skip<-2>();
-	// if (calls & 1) random.skip<-1>();
-	Random random = Random::withSeed(seed).skip(-ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls);
+	Random random = Random::withSeed(seed).skip(-chunk.maxCalls);
 
-	for (int32_t __currentCall = -ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls; __currentCall <= ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls; ++__currentCall) {
+	for (int32_t currentCall = -chunk.maxCalls; currentCall <= chunk.maxCalls && found != allFound; ++currentCall) {
+		Random coordinateRandom(random);
+		const uint32_t x = coordinateRandom.nextInt(16);
+		random = coordinateRandom;
+		const uint32_t z = coordinateRandom.nextInt(16);
 		#pragma unroll
-		for (uint32_t j = 0; j < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions; j++) {
-			const TreeChunkPosition &tree = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].treePositions[j];
-
-			Random treeRandom(random);
-			if (tree.testXZTypeAndAttributes(treeRandom, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].biome, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].version)) found |= UINT32_C(1) << j;
+		for (uint32_t j = 0; j < chunk.numberOfTreePositions; j++) {
+			const uint32_t treeMask = UINT32_C(1) << j;
+			if (found & treeMask) continue;
+			const TreeChunkPosition &tree = chunk.treePositions[j];
+			if (x != tree.populationChunkXOffset || z != tree.populationChunkZOffset) continue;
+			Random treeRandom(coordinateRandom);
+			if (tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) found |= treeMask;
 		}
-		random.skip<1>();
 	}
 
-	if (found != ((UINT32_C(1) << ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) - 1)) FILTER_RETURN;
+	if (found != allFound) FILTER_RETURN;
 	uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&filter3_numberOfResultsThisWorkerSet), 1);
 	if (resultIndex >= ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_RETURN;
 	FILTER_3_OUTPUT[resultIndex] = seed;
