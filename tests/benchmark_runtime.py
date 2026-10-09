@@ -48,6 +48,8 @@ def compiled_header(observations):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--baseline', default='a69f236')
+    ap.add_argument('--source-repo', type=Path, default=ROOT, help='Existing repository supplying pinned source history')
+    ap.add_argument('--runtime-revision', default='HEAD', help='Revision of the runtime source being built')
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--repeats', type=int, default=3)
     ap.add_argument('--expected-hardware', help='Require this exact UUID/name/driver/memory string')
@@ -58,10 +60,10 @@ def main():
     gpu = hardware()
     if args.expected_hardware:
         assert gpu == args.expected_hardware, (gpu, args.expected_hardware)
-    revision = subprocess.check_output(['git', 'rev-parse', args.baseline], cwd=ROOT, text=True).strip()
+    revision = subprocess.check_output(['git', 'rev-parse', args.baseline], cwd=args.source_repo, text=True).strip()
     baseline = output / 'compiled'
     baseline.mkdir()
-    with tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', revision], cwd=ROOT))) as archive:
+    with tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', revision], cwd=args.source_repo))) as archive:
         archive.extractall(baseline, filter='data')
     settings = (baseline / 'Settings (MODIFY THIS).cuh').read_text()
     # Both paths flush candidate stdout so the first-output time is observable.
@@ -80,7 +82,7 @@ def main():
         'documented-five-tree': (ROOT / 'Test Data/documented-16-1.txt').read_text(),
     }
     report = {'hardware': gpu, 'compiler': subprocess.check_output(['nvcc', '--version'], text=True).strip(),
-              'runtime_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+              'runtime_commit': subprocess.check_output(['git', 'rev-parse', args.runtime_revision], cwd=args.source_repo, text=True).strip(),
               'baseline_commit': revision, 'flags': FLAGS, 'runtime_build_seconds': build_seconds,
               'metric': 'observations_available_to_complete_exhaustive_candidate_output',
               'exhaustive': True, 'domain_states': 1 << 44, 'seed_supplied_to_solver': False,
