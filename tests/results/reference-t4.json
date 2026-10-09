@@ -1,0 +1,44 @@
+{
+  "fixture": "TEST_DATA_16_1_2",
+  "minecraft_version": "1.16.1",
+  "input_mode": "documented full attributes (positions, types, heights, leaf corners)",
+  "hardware": "GPU-2891ecda-a53e-c564-6771-d543407075ff, Tesla T4, 580.82.07, 15360 MiB",
+  "nvcc": "13.0.88",
+  "flags": [
+    "-O3",
+    "-arch=sm_75",
+    "-Xcompiler=-mcmodel=large",
+    "-Xlinker=--no-relax",
+    "--cudart=shared"
+  ],
+  "exhaustive": true,
+  "primary_states": 17592186044416,
+  "workers": 4294967296,
+  "partial_runs": 16,
+  "expected_structure_seed": 157527116063087,
+  "observations": [
+    {
+      "commit": "381991f450414993445d5e945f5084beb25e3e1d",
+      "seconds": 227.174,
+      "candidate_set": [
+        157527116063087
+      ],
+      "exit_code": 0,
+      "correctness_issue": "Device-only filterStorageB is directly sorted on the host, losing candidates."
+    },
+    {
+      "commit": "3755002afb59919b97b7f023a27b6155635efc6d",
+      "seconds": 232.033,
+      "candidate_set": [
+        89593286004526,
+        115468527086863,
+        157527116063087,
+        272740909957168
+      ],
+      "exit_code": 0,
+      "storage_correction": true
+    }
+  ],
+  "evidence": "Displayed complete solver logs in cells 5 and 6 of the Colab notebook, including every partial run and sorted final candidates.",
+  "notebook": "https://colab.research.google.com/drive/1Wv5HdU7Ez0_BfA0L5xdGsCmhQxJkI0g4"
+}
