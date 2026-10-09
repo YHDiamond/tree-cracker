@@ -25,7 +25,7 @@ constexpr const bool SILENT_MODE = false;
 constexpr const uint64_t NUMBER_OF_PARTIAL_RUNS = 16;
 constexpr const uint64_t PARTIAL_RUN_TO_BEGIN_FROM = 1; // This counts as 1, 2, ..., NUMBER_OF_PARTIAL_RUNS.
 /* The maximum number of results to allow per run.
-   If set to AUTO, the program will try to calculate a reasonable limit automatically, based on your input data.*/
+   If set to AUTO, use the largest result array supported by this build.*/
 constexpr const uint64_t MAX_NUMBER_OF_RESULTS_PER_RUN = AUTO;
 /* Which types of values should be outputted.*/
 constexpr OutputType TYPES_TO_OUTPUT = OutputType::Structure_Seeds;

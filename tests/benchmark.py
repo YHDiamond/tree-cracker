@@ -165,20 +165,30 @@ def main():
     for variant in args.variant:
         name, revision = variant.split('=', 1)
         sha = command(['git', 'rev-parse', revision], cwd=ROOT)
+        reusable_binary = None
+        reusable_build_seconds = None
         for fixture in fixtures:
             assert command(['nvidia-smi', '--query-gpu=uuid,name,driver_version,memory.total', '--format=csv,noheader']) == gpu
             target = args.output / name / fixture['id']
             prepare(sha, fixture, target, args.workers, args.capacity, args.profile_batches, args.positive_window)
-            start = time.monotonic()
-            with (target / 'build.log').open('w') as log:
-                source = 'tests/positive_windows.cu' if args.positive_window else 'main.cu'
-                subprocess.run(['nvcc', source, '-o', 'main'] + FLAGS, cwd=target, stdout=log, stderr=subprocess.STDOUT, check=True)
-            build_seconds = time.monotonic() - start
+            runtime_input = (target / 'observations.txt').exists()
+            if runtime_input and reusable_binary is not None:
+                binary = reusable_binary
+                build_seconds = reusable_build_seconds
+            else:
+                start = time.monotonic()
+                with (target / 'build.log').open('w') as log:
+                    source = 'tests/positive_windows.cu' if args.positive_window else 'main.cu'
+                    subprocess.run(['nvcc', source, '-o', 'main'] + FLAGS, cwd=target, stdout=log, stderr=subprocess.STDOUT, check=True)
+                build_seconds = time.monotonic() - start
+                binary = target / 'main'
+                if runtime_input:
+                    reusable_binary, reusable_build_seconds = binary, build_seconds
             print(f'RUN {name} {fixture["id"]} build={build_seconds:.3f}s', flush=True)
             for repeat in range(args.repeats):
                 start = time.monotonic()
                 with (target / f'run-{repeat}.log').open('w') as log:
-                    run_args = [str(target / 'main')]
+                    run_args = [str(binary)]
                     if (target / 'observations.txt').exists():
                         run_args.append(str(target / 'observations.txt'))
                     if args.positive_window:
@@ -198,6 +208,7 @@ def main():
                 digest = hashlib.sha256(json.dumps(candidates, separators=(',', ':')).encode()).hexdigest()
                 row = {'variant': name, 'commit': sha, 'case': fixture['id'], 'seconds': seconds,
                        'build_seconds': build_seconds, 'repeat': repeat, 'exit_code': exit_code, 'valid': valid,
+                       'runtime_input': runtime_input, 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
                        'candidate_count': len(candidates), 'candidate_sha256': digest,
                        'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
                        'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}

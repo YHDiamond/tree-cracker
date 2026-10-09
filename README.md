@@ -1,6 +1,6 @@
 # Tree Cracker[^1]
 
-This is a fork of [Andrew (Gaider10)'s TreeCracker](https://github.com/Gaider10/TreeCracker) that is intended to be streamlined and easier to use. Instead of having to juggle multiple distinct programs and libraries, one now only needs to input their data and settings into [a single file](./Settings%20(MODIFY%20THIS).cuh), then compile and run this program all at once. This fork also adds several extra features to the program, such as prioritizing high-information chunks and determining in advance whether one's input data is likely to be sufficient.
+This is a fork of [Andrew (Gaider10)'s TreeCracker](https://github.com/Gaider10/TreeCracker). Compile the CUDA solver once, then pass tree observations in a text file for each search. Observation tables are constructed at startup using the existing tree model and chunk ordering. Search settings remain in [Settings](./Settings%20(MODIFY%20THIS).cuh).
 
 ## Purpose
 Given details about a set of Minecraft trees (such as their coordinates, types, and attributes), this code is designed to return a list of <!-- worldseeds --> structure seeds[^2] that could <ins>potentially</ins> generate those exact trees.
@@ -18,7 +18,7 @@ If using Windows, you will also need some form of C++ compiler installed; howeve
 
 ## Installation, Setup, and Usage
 1. Download the repository, either as a ZIP file from GitHub or by cloning it through Git.
-2. Open [the Settings file](./Settings%20(MODIFY%20THIS).cuh) in your favorite code editor, and replace the examples of input data with your own, and the settings with your own. (For enumerations like `Version` or `Biome`, the list of supported values can be found in [Allowed Values for Settings.cuh](./Allowed%20Values%20for%20Settings.cuh).)
+2. Write one observation per line: `version Forest type x z height_min height_max leaf_states`. Types are `Oak`, `Fancy_Oak`, `Birch`, or `Unknown`. Heights are inclusive ranges; `0 0` means unknown. The twelve leaf characters are `0` (absent), `1` (placed), or `?` (unknown), ordered lowest/middle/highest layer, each Northwest/Southwest/Northeast/Southeast. Fancy Oak and Unknown require unknown leaf states. Blank lines and `#` comments are accepted. See [the fresh four-tree input](Test%20Data/fresh-16-1-20261009.txt). No seed is part of the input. Change [Settings](./Settings%20(MODIFY%20THIS).cuh) only when changing search configuration.
 
 <!-- TODO: Rework warnings to apply these (i.e. warn about low first-tree and first-treechunk bits instead of total bits) -->
 When creating your input data, keep in mind that <ins>the comprehensiveness of the data</ins> (specifically the number of "bits" of information the highest-information tree and treechunk <!-- TODO: Explain treechunks? --> reveal) <ins>matters far more than factors like the number of trees.</ins> For example, I and Chaos4669 once tried to crack the same worldseed using this tool:
@@ -30,7 +30,7 @@ When creating your input data, keep in mind that <ins>the comprehensiveness of t
 3. Go back and double-check your input data. There is an 80% chance you inputted something incorrectly the first time, and any mistakes will prevent the program from deriving the correct worldseeds.
 4. Once you're *completely certain* your input data is correct&mdash;if you wish to run the program on Google Colab:
     1. Visit [the website](https://colab.research.google.com), sign in with a Google account, and create a new notebook.
-    2. Open the Files sidebar to the left and upload the program's files, making sure to keep the files' structure the way it originally was (the underlying code files are inside a folder named src, etc.). Don't forget to upload the modified Settings file instead of the original.
+    2. Upload or clone the program's files, retaining their directory structure, and upload your observations file.
     3. Under the Runtime tab, select "Change runtime type" and select T4 GPU as the hardware accelerator.
 5. Whether on Google Colab or your own computer, open a terminal and verify [nvcc](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html), the CUDA compiler, is installed:
 ```bash
@@ -46,20 +46,20 @@ If the output is an error and not the compiler's information, you will need to i
 ```
 Then use `nvcc` to compile the program:
 ```bash
-(Linux)         nvcc main.cu -o "main" -O3
+(Linux/T4)      nvcc main.cu -o main -O3 -arch=sm_75 -Xcompiler=-mcmodel=large -Xlinker=--no-relax --cudart=shared
 (Windows)       nvcc main.cu -o "main.exe" -O3
 (MacOS)         nvcc main.cu -o "main.app" -O3
-(Google Colab) !nvcc main.cu -o "main" -O3
+(Google Colab) !nvcc main.cu -o main -O3 -arch=sm_75 -Xcompiler=-mcmodel=large -Xlinker=--no-relax --cudart=shared
 ```
-Depending on your input data, the compilation may take almost a full minute or even longer.<br />
+Compilation is a one-time cost for each search configuration and GPU target; changing observations does not require rebuilding.<br />
 The compiler may print warnings akin to `Stack size for entry function '_Z11biomeFilterv' cannot be statically determined`: this is normal. (All this means is that the compiler couldn't determine the exact number of iterations certain recursive functions will undergo.)
 
 7. Run the compiled program:
 ```bash
-(Linux)         .\main
-(Windows)       .\main.exe
-(MacOS)         open -a main.app
-(Google Colab) !.\main
+(Linux)         LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-} ./main observations.txt results.txt
+(Windows)       .\main.exe observations.txt results.txt
+(MacOS)         ./main.app observations.txt results.txt
+(Google Colab) !LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH ./main observations.txt results.txt
 ```
 As mentioned in step 2, the program's runtime can vary wildly based on one's input data and its comprehensiveness. Nevertheless, if all goes well, a file should ultimately be created (or a list should be printed to the screen, depending on your settings) containing your possible <!-- worldseeds --> structure seeds.
 
@@ -122,7 +122,7 @@ For the documented full example, remove the placeholder `INPUT_DATA` array from 
 
 ```bash
 nvcc main.cu -o main -O3 -arch=sm_75 -Xcompiler=-mcmodel=large -Xlinker=--no-relax --cudart=shared
-LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-} ./main
+LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-} ./main 'Test Data/documented-16-1.txt'
 ```
 
 ## Fresh vanilla 1.16.1 world recovery
@@ -140,7 +140,7 @@ The input used **four birch trees across two verified Forest chunks**, with exac
 
 The first three trees produced six structure-seed candidates; the fourth tree in the neighboring chunk reduced these to one. Four trees were sufficient for this input; the absolute minimum was not tested. These observations were collected directly from the generated world, so this measurement excludes video extraction and data collection time. No blind records were read.
 
-The exact observations are saved in [the input array](Test%20Data/fresh-16-1-20261009.cuh), with hardware, compile flags, input hash, seed verification and per-tree details in [the measurement](tests/results/fresh-world-t4.json) and all sixteen partitions in [the run log](tests/results/fresh-world-t4.log). To reproduce, replace the placeholder `INPUT_DATA` array in the Settings file with the contents of that input array, retain the default full-domain settings, and compile/run with the Linux/Colab commands above. The measured source revision is `12b52097eb136dd32074b1435288a51df688e09a`.
+The exact observations are saved in [the runtime input](Test%20Data/fresh-16-1-20261009.txt), with hardware, compile flags, input hash, seed verification and per-tree details in [the measurement](tests/results/fresh-world-t4.json) and all sixteen partitions in [the run log](tests/results/fresh-world-t4.log). The historical compiled-input measurement used revision `12b52097eb136dd32074b1435288a51df688e09a` and [this input array](Test%20Data/fresh-16-1-20261009.cuh). The current executable takes the text input directly.
 
 ## Acknowledgements
 I would like to give very large Thank You's to

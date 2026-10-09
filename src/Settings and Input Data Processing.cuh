@@ -75,7 +75,7 @@ __host__ __device__ constexpr const char *toString(const TreeType treetype) {
 // TODO: toString for OutputType
 
 
-// TODO: Replace copies of treechunks with pointers to INPUT_DATA so it's not so large?
+// Observation chunks are built once at startup and shared by all search kernels.
 struct SetOfTreeChunks {
 	TreeChunk *treeChunks;
 	uint32_t numberOfTreeChunks;
@@ -318,11 +318,7 @@ constexpr uint64_t ACTUAL_WORKERS_PER_BLOCK = constexprMin(WORKERS_PER_BLOCK, NU
    If RELATIVE_COORDINATES_MODE is false, the first four bits of it directly correspond to the first tree's x-offset within the population chunk, so that limits the possibilities to 2^44.*/
 constexpr uint64_t TOTAL_NUMBER_OF_STATES_TO_CHECK = twoToThePowerOf(44 + 4*static_cast<uint32_t>(RELATIVE_COORDINATES_MODE));
 // constexpr uint64_t TOTAL_NUMBER_OF_STATES_TO_CHECK = RELATIVE_COORDINATES_MODE ? twoToThePowerOf(48) : static_cast<uint64_t>(PARALLELOGRAM_SIZE.x) * PARALLELOGRAM_SIZE.z;
-/* One one hand, the first filter finds all internal states that can generate the tree with the most number of bits of information.
-   Therefore for a tree with k bits of information, we can expect there to be around 2^(48 - k) results, or 2^(48 - k)/ACTUAL_NUMBER_OF_PARTIAL_RUNS results per run.
-   On the other hand, during each iteration we're only actually analyzing at most NUMBER_OF_WORKERS*(getHighestMaxCalls() + 1)*(1 << getHighestMaxTreeCount()) entries.
-   Therefore the expected number of results we'll need space for is simply the minimum of those two expressions, which is then doubled to provide some leeway just in case.
-   (Note: this does not currently take into account the fact that 65536 worldseeds correspond to each ultimate structure seed, since then we'd need to make this 65536x larger and I suspect the structure seeds will be filtered enough to render that unnecessary.)*/
+// Capacity is independent of observations, so the executable can be reused.
 // NVCC error C2148 places a hard limit of 0x7fffffff bytes per array, while the largest-information array we'll be using is DoubleStorage.
 constexpr uint64_t MOST_POSSIBLE_RESULTS_PER_RUN = constexprMin(static_cast<uint64_t>(constexprCeil(static_cast<double>(TOTAL_NUMBER_OF_STATES_TO_CHECK)/static_cast<double>(ACTUAL_NUMBER_OF_PARTIAL_RUNS))), 0x7fffffff/sizeof(DoubleStorage));
 constexpr uint64_t ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN = constexprMin(MAX_NUMBER_OF_RESULTS_PER_RUN ? MAX_NUMBER_OF_RESULTS_PER_RUN : MOST_POSSIBLE_RESULTS_PER_RUN, MOST_POSSIBLE_RESULTS_PER_RUN);
