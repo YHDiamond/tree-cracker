@@ -127,3 +127,7 @@ $RECYCLE.BIN/
 ~noU*
 ~noUpload*
 *.txt
+
+.worktrees/
+__pycache__/
+benchmark-results/
