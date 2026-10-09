@@ -256,12 +256,14 @@ void *filter3(void *dat) {
 // TODO: See if unifying with filter8 would be possible?
 #if CUDA_IS_PRESENT
 __global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void treechunkFilter() {
-	uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint64_t numberOfLogicalWorkers = filter3_numberOfResultsThisWorkerSet * (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1) * twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
+	for (uint64_t workIndex = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x; workIndex < numberOfLogicalWorkers; workIndex += static_cast<uint64_t>(gridDim.x) * blockDim.x) {
+	uint64_t index = workIndex;
 	uint32_t calls = index % (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1);
 	index /= (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1);
 
 	uint32_t validIngamePositionsMask = getLowestBitsOf(index, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
-	if (getNumberOfOnesIn(validIngamePositionsMask) < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) FILTER_RETURN;
+	if (getNumberOfOnesIn(validIngamePositionsMask) < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) continue;
 	index /= twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
 	if (index >= filter3_numberOfResultsThisWorkerSet) FILTER_RETURN;
 	uint64_t originalSeed = TREECHUNK_FILTER_INPUT[index];
@@ -292,7 +294,7 @@ void *treechunkFilter(void *dat) {
 			// If fewer trees are predicted to generate than there are in the input data, skip to the next seed.
 			if (validIngamePositionsMask >> treeCount)
 				#if (CUDA_IS_PRESENT)
-					return;
+					continue;
 				#else
 					continue;
 				#endif
@@ -316,7 +318,7 @@ void *treechunkFilter(void *dat) {
 
 			if (getNumberOfOnesIn(found) != ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions)
 				#if (CUDA_IS_PRESENT)
-					return;
+					continue;
 				#else
 					continue;
 				#endif
@@ -325,16 +327,23 @@ void *treechunkFilter(void *dat) {
 				uint32_t seedMask = UINT32_C(1) << (index & 31);
 				if (atomicOr(&filter3_masks[index / 32], seedMask) & seedMask)
 				#if (CUDA_IS_PRESENT)
-					return;
+					continue;
 				#else
 					continue;
 				#endif
 			}
 
 			uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&treechunkFilter_numberOfResultsThisWorkerSet), 1);
-			if (resultIndex >= ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_RETURN;
+			if (resultIndex >= ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN)
+				#if (CUDA_IS_PRESENT)
+					continue;
+				#else
+					FILTER_RETURN;
+				#endif
 			TREECHUNK_FILTER_OUTPUT[resultIndex] = seed;
-#if (!CUDA_IS_PRESENT)
+#if CUDA_IS_PRESENT
+	}
+#else
 		}
 	}
 	return NULL;
