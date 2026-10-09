@@ -55,12 +55,25 @@ __global__ void validateLeafPredicateAndRewind() {
 	birch.birchAttributes.leafStates = SetOfLeafStates(mask);
 	Random selectorActual = Random::withSeed(state), selectorReference(selectorActual);
 	const bool selectorResult = birch.testTypeAndAttributes(selectorActual, Biome::Forest, version);
-	const TreeType selectedType = getNextTreeType(selectorReference, Biome::Forest, version);
+	const TreeType selectedType = selectorReference.nextFloat() < 0.2f ? TreeType::Birch :
+		selectorReference.nextFloat() < 0.1f ? TreeType::Fancy_Oak : TreeType::Oak;
 	const bool selectorExpected = selectedType == TreeType::Birch && birch.birchAttributes.canBeGeneratedBy(selectorReference, version);
 	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0];
 	const uint64_t rewind = (state * chunk.scanStartLCG.multiplier + chunk.scanStartLCG.addend) & LCG::MASK;
 	if (result != expected || actual.seed != reference.seed || selectorResult != selectorExpected || selectorActual.seed != selectorReference.seed || rewind != Random::withSeed(state).skip(-chunk.maxCalls).seed)
 		atomicAdd(&validationPredicateFailures, 1u);
+	// Cover every possible first nextFloat value against the original float
+	// selector, including RNG advancement. This is validation-only work.
+	uint32_t selectorFailures = 0;
+	for (uint32_t bits = index; bits < (UINT32_C(1) << 24); bits += 4096) {
+		Random typeActual = Random::withSeed(static_cast<uint64_t>(bits) << 24).skip<-1>();
+		Random typeReference(typeActual);
+		const TreeType typeExpected = typeReference.nextFloat() < 0.2f ? TreeType::Birch :
+			typeReference.nextFloat() < 0.1f ? TreeType::Fancy_Oak : TreeType::Oak;
+		if (getNextTreeType(typeActual, Biome::Forest, version) != typeExpected || typeActual.seed != typeReference.seed)
+			++selectorFailures;
+	}
+	if (selectorFailures) atomicAdd(&validationPredicateFailures, selectorFailures);
 }
 
 __global__ void deriveKnownPositiveStates(const uint64_t validationStructureSeed) {
@@ -119,7 +132,7 @@ int main(int argc, char **argv) {
 	TRY_CUDA(cudaGetLastError());
 	TRY_CUDA(cudaDeviceSynchronize());
 	if (validationPredicateFailures) ABORT("UNIT_REGRESSION predicate/rewind failures=%u.\n", validationPredicateFailures);
-	std::fprintf(stderr, "UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true\n");
+	std::fprintf(stderr, "UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 tree_selector_cases=16777216 exact_rng_state=true\n");
 	deriveKnownPositiveStates<<<1, 1>>>(expectedStructureSeed);
 	TRY_CUDA(cudaGetLastError());
 	TRY_CUDA(cudaDeviceSynchronize());
