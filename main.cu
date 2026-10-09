@@ -134,8 +134,7 @@ int main() {
 			transferEntries(FILTER_3_OUTPUT, TREECHUNK_FILTER_INPUT, filter3_numberOfResultsThisWorkerSet);
 			treechunkFilter_numberOfResultsThisWorkerSet = 0;
 			#if CUDA_IS_PRESENT
-				// treechunkFilter<<<constexprCeil(static_cast<double>(constexprMin(filter3_numberOfResultsThisWorkerSet * (ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxCalls() + 1) * twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxTreeCount()))/static_cast<double>(ACTUAL_WORKERS_PER_BLOCK)), static_cast<uint64_t>(INT32_MAX)), ACTUAL_WORKERS_PER_BLOCK>>>();
-				treechunkFilter<<<constexprMin(filter3_numberOfResultsThisWorkerSet * (ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxCalls() + 1) * twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxTreeCount())/ACTUAL_WORKERS_PER_BLOCK + 1, static_cast<uint64_t>(INT32_MAX)), ACTUAL_WORKERS_PER_BLOCK>>>();
+				treechunkFilter<<<constexprMin(filter3_numberOfResultsThisWorkerSet * (ABSOLUTE_POPULATION_CHUNKS_DATA.getCurrentMaxCalls() + 1)/ACTUAL_WORKERS_PER_BLOCK + 1, static_cast<uint64_t>(INT32_MAX)), ACTUAL_WORKERS_PER_BLOCK>>>();
 			#else
 				for (uint64_t i = 0; i < filter3_numberOfResultsThisWorkerSet; ++i) pthread_create(&threads[i], NULL, treechunkFilter, &data[i]); // How to handle larger number of i's?
 			#endif

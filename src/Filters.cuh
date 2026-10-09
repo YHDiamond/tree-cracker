@@ -255,18 +255,91 @@ void *filter3(void *dat) {
    Values are read from TREECHUNK_FILTER_INPUT[] and outputted to TREECHUNK_FILTER_OUTPUT[], with the final count being stored in treechunkFilter_numberOfResultsThisWorkerSet.*/
 // TODO: See if unifying with filter8 would be possible?
 #if CUDA_IS_PRESENT
-__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void treechunkFilter() {
-	const uint64_t numberOfLogicalWorkers = filter3_numberOfResultsThisWorkerSet * (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1) * twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
-	for (uint64_t workIndex = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x; workIndex < numberOfLogicalWorkers; workIndex += static_cast<uint64_t>(gridDim.x) * blockDim.x) {
-	uint64_t index = workIndex;
-	uint32_t calls = index % (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1);
-	index /= (ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls + 1);
+// Enumerate the same valid/invalid-attempt masks by sharing their prefixes.
+// The input builder merges equal-coordinate type alternatives, so each attempt
+// can match at most one observed position. That bounds what a suffix can find.
+__device__ bool treechunkMatchesSharedPrefixes(Random random, const TreeChunk &chunk, const uint32_t treeCount) {
+	const uint32_t allFound = (UINT32_C(1) << chunk.numberOfTreePositions) - 1;
+	constexpr uint32_t pendingCapacity = ABSOLUTE_POPULATION_CHUNKS_DATA.getHighestMaxTreeCount();
+	uint64_t pendingSeeds[pendingCapacity];
+	uint32_t pendingFound[pendingCapacity], pendingLevels[pendingCapacity];
+	uint32_t pendingCount = 0, found = 0, level = 0;
+	for (;;) {
+		if (found == allFound) return true;
+		const uint32_t remaining = treeCount - level;
+		if (remaining && getNumberOfOnesIn(found) + remaining >= chunk.numberOfTreePositions) {
+			uint32_t validFound = found;
+			Random coordinateRandom(random);
+			const uint32_t x = coordinateRandom.nextInt(16);
+			const uint32_t z = coordinateRandom.nextInt(16);
+			#pragma unroll
+			for (uint32_t j = 0; j < chunk.numberOfTreePositions; ++j) {
+				const uint32_t treeMask = UINT32_C(1) << j;
+				if (found & treeMask) continue;
+				const TreeChunkPosition &tree = chunk.treePositions[j];
+				if (x != tree.populationChunkXOffset || z != tree.populationChunkZOffset) continue;
+				Random treeRandom(coordinateRandom);
+				if (tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) validFound |= treeMask;
+			}
+			if (validFound == allFound) return true;
+			const bool visitValid = getNumberOfOnesIn(validFound) + remaining - 1 >= chunk.numberOfTreePositions;
+			const bool visitInvalid = getNumberOfOnesIn(found) + remaining - 1 >= chunk.numberOfTreePositions;
+			if (visitInvalid) {
+				Random invalidRandom(random);
+				TreeChunkPosition::skip(invalidRandom, chunk.biome, false, chunk.version);
+				if (!visitValid) {
+					random = invalidRandom;
+					++level;
+					continue;
+				}
+				pendingSeeds[pendingCount] = invalidRandom.seed;
+				pendingFound[pendingCount] = found;
+				pendingLevels[pendingCount] = level + 1;
+				++pendingCount;
+			}
+			if (visitValid) {
+				TreeChunkPosition::skip(random, chunk.biome, true, chunk.version);
+				found = validFound;
+				++level;
+				continue;
+			}
+		}
+		if (!pendingCount) return false;
+		--pendingCount;
+		random = Random::withSeed(pendingSeeds[pendingCount]);
+		found = pendingFound[pendingCount];
+		level = pendingLevels[pendingCount];
+	}
+}
 
-	uint32_t validIngamePositionsMask = getLowestBitsOf(index, ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
-	if (getNumberOfOnesIn(validIngamePositionsMask) < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) continue;
-	index /= twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount);
-	if (index >= filter3_numberOfResultsThisWorkerSet) FILTER_RETURN;
-	uint64_t originalSeed = TREECHUNK_FILTER_INPUT[index];
+__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void treechunkFilter() {
+	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
+	const uint64_t callsPerSeed = static_cast<uint64_t>(chunk.maxCalls) + 1;
+	const uint64_t numberOfLogicalWorkers = filter3_numberOfResultsThisWorkerSet * callsPerSeed;
+	for (uint64_t workIndex = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x; workIndex < numberOfLogicalWorkers; workIndex += static_cast<uint64_t>(gridDim.x) * blockDim.x) {
+		const uint64_t index = workIndex / callsPerSeed;
+		const uint32_t calls = workIndex % callsPerSeed;
+		Random random = Random::withSeed(TREECHUNK_FILTER_INPUT[index]);
+		if (calls & 256) random.skip<-256>();
+		if (calls & 128) random.skip<-128>();
+		if (calls &  64) random.skip<- 64>();
+		if (calls &  32) random.skip<- 32>();
+		if (calls &  16) random.skip<- 16>();
+		if (calls &   8) random.skip<-  8>();
+		if (calls &   4) random.skip<-  4>();
+		if (calls &   2) random.skip<-  2>();
+		if (calls &   1) random.skip<-  1>();
+		const uint64_t seed = random.seed;
+		const uint32_t treeCount = biomeTreeCount(random, chunk.biome, chunk.version);
+		if (!treechunkMatchesSharedPrefixes(random, chunk, treeCount)) continue;
+		if (ABSOLUTE_POPULATION_CHUNKS_DATA.collapseNearbySeedsFlag) {
+			const uint32_t seedMask = UINT32_C(1) << (index & 31);
+			if (atomicOr(&filter3_masks[index / 32], seedMask) & seedMask) continue;
+		}
+		const uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&treechunkFilter_numberOfResultsThisWorkerSet), 1);
+		if (resultIndex < ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) TREECHUNK_FILTER_OUTPUT[resultIndex] = seed;
+	}
+}
 #else
 void *treechunkFilter(void *dat) {
 	uint64_t index = static_cast<ThreadData *>(dat)->index;
@@ -275,7 +348,6 @@ void *treechunkFilter(void *dat) {
 	for (uint32_t validIngamePositionsMask = 0; validIngamePositionsMask < twoToThePowerOf(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxTreeCount); ++validIngamePositionsMask) {
 		if (getNumberOfOnesIn(validIngamePositionsMask) < ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].numberOfTreePositions) continue;
 		for (uint32_t calls = 0; calls <= ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].maxCalls; ++calls) {
-#endif
 			Random random = Random::withSeed(originalSeed);
 			if (calls & 256) random.skip<-256>();
 			if (calls & 128) random.skip<-128>();
@@ -341,14 +413,11 @@ void *treechunkFilter(void *dat) {
 					FILTER_RETURN;
 				#endif
 			TREECHUNK_FILTER_OUTPUT[resultIndex] = seed;
-#if CUDA_IS_PRESENT
-	}
-#else
 		}
 	}
 	return NULL;
-#endif
 }
+#endif
 
 /* Reverses population seeds (returned by Filter 4) back to structure seeds.
    totalStructureSeedsThisWorkerSet must be set to 0 beforehand.
