@@ -338,10 +338,12 @@ struct ThreadData {
 #endif
 
 // TODO: How much slower would the program run if DoubleStorage storages were used for everything?
+// Host code passes these buffers to transferEntries and sorts/prints their contents after synchronization.
+// Managed storage gives the host and kernels the same valid addresses.
 __managed__ uint64_t filterStorageA[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN];
-__device__ uint64_t filterStorageB[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN]; // To prevent new results from accidentally erasing the old inputs mid-filter
-__device__ DoubleStorage filterDoubleStorageA[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN];
-__device__ DoubleStorage filterDoubleStorageB[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN]; // To prevent new results from accidentally erasing the old inputs mid-filter
+__managed__ uint64_t filterStorageB[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN]; // To prevent new results from accidentally erasing the old inputs mid-filter
+__managed__ DoubleStorage filterDoubleStorageA[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN];
+__managed__ DoubleStorage filterDoubleStorageB[ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN]; // To prevent new results from accidentally erasing the old inputs mid-filter
 
 void printSettingsAndDataWarnings() noexcept {
 	if (SILENT_MODE) return;
