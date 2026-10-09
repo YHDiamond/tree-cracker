@@ -110,6 +110,7 @@ def main():
     ap.add_argument('--capacity', type=int, default=1 << 24)
     ap.add_argument('--profile-batches', type=int, default=0)
     ap.add_argument('--positive-window', action='store_true', help='validation-only known-positive bounded-window regression; never inference')
+    ap.add_argument('--reference-report', type=Path, help='compare positive tests with an earlier report from this same GPU and configuration')
     ap.add_argument('--repeats', type=int, default=1)
     ap.add_argument('--case', action='append', help='optional fixture ID filter')
     args = ap.parse_args()
@@ -139,6 +140,21 @@ def main():
     env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + env.get('LD_LIBRARY_PATH', '')
     references = {}
     reference_windows = {}
+    reference_inputs = {}
+    if args.reference_report:
+        assert args.positive_window, 'Saved candidate sets are supported for positive regressions'
+        previous = json.loads(args.reference_report.read_text())
+        for key in ['hardware', 'compiler', 'mode', 'workers', 'capacity', 'flags']:
+            assert previous[key] == report[key], (key, previous[key], report[key])
+        for row in previous['results']:
+            if row['case'] in references:
+                continue
+            assert row['valid'] and row['same_output'] and row['expected_positive_retained']
+            references[row['case']] = (row['candidate_set'], True)
+            reference_windows[row['case']] = row['tested_state_window']
+            reference_inputs[row['case']] = row['input_sha256']
+        assert all(f['id'] in references for f in fixtures)
+        report['reference_report'] = str(args.reference_report)
     print(json.dumps({k: v for k, v in report.items() if k != 'results'}), flush=True)
     for variant in args.variant:
         name, revision = variant.split('=', 1)
@@ -177,6 +193,8 @@ def main():
                        'candidate_count': len(candidates), 'candidate_sha256': digest,
                        'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
                        'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}
+                if reference_inputs:
+                    assert row['input_sha256'] == reference_inputs[fixture['id']]
                 if args.positive_window:
                     timing = re.search(r'passed=true exhaustive=false seconds=([0-9.]+)', log_text)
                     row['pipeline_seconds'] = float(timing.group(1)) if timing else None
