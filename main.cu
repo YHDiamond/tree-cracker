@@ -73,8 +73,9 @@ int main() {
 			// Filter 1 (states that can exactly generate the highest-information tree):
 			filter1_numberOfResultsThisWorkerSet = 0;
 			#if CUDA_IS_PRESENT
-				// filter1<<<constexprCeil(static_cast<double>(NUMBER_OF_WORKERS)/static_cast<double>(ACTUAL_WORKERS_PER_BLOCK)), ACTUAL_WORKERS_PER_BLOCK>>>(runCurrentSeed);
-				filter1<<<NUMBER_OF_WORKERS/ACTUAL_WORKERS_PER_BLOCK + 1, ACTUAL_WORKERS_PER_BLOCK>>>(runCurrentSeed);
+				const uint64_t filter1BatchSize = constexprMin(NUMBER_OF_WORKERS, runEndSeed - runCurrentSeed);
+				const uint64_t filter1Blocks = RELATIVE_COORDINATES_MODE ? (filter1BatchSize + ACTUAL_WORKERS_PER_BLOCK - 1) / ACTUAL_WORKERS_PER_BLOCK : filter1IntervalBlockCount(filter1BatchSize);
+				filter1<<<constexprMin(filter1Blocks, static_cast<uint64_t>(INT32_MAX)), ACTUAL_WORKERS_PER_BLOCK>>>(runCurrentSeed, filter1BatchSize, filter1Blocks);
 			#else
 				for (uint64_t i = 0; i < NUMBER_OF_WORKERS; ++i) {
 					data[i].start = runCurrentSeed;

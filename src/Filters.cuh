@@ -61,28 +61,71 @@ __device__ uint32_t filter8_masks[(ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN + 31) / 
    filter1_numberOfResultsThisWorkerSet must be set to 0 beforehand.
    Values are generated internally and outputted to FILTER_1_OUTPUT[], with the final count being stored in filter1_numberOfResultsThisWorkerSet.*/
 #if CUDA_IS_PRESENT
-__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start) {
-	uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
-	uint64_t seed = (RELATIVE_COORDINATES_MODE ? UINT64_C(0) : (static_cast<uint64_t>(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].treePositions[0].populationChunkXOffset) << 44)) + start + index;
-	// From Cortex's TreeCracker, but is both slower and doesn't seem to work at the moment...
-	// uint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x + start;
-	// int64_t latticeX = (index % PARALLELOGRAM_SIZE.x) + PARALLELOGRAM_LOWEST_CORNER.x;
-	// int64_t latticeZ = (index/PARALLELOGRAM_SIZE.x) + PARALLELOGRAM_LOWEST_CORNER.z;
-	// if (VECTOR_1.x * latticeZ < VECTOR_1.z * latticeX) latticeZ += PARALLELOGRAM_SIZE.z;
-	// if (VECTOR_2.x * latticeZ < VECTOR_2.z * latticeX) {
-	// 	latticeX += VECTOR_1.x;
-	// 	latticeZ += VECTOR_1.z;
-	// }
-	// latticeX += ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].treePositions[0].populationChunkXOffset * VECTOR_1.x + ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].treePositions[0].populationChunkZOffset * VECTOR_2.x;
-	// latticeZ += ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].treePositions[0].populationChunkXOffset * VECTOR_1.z + ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0].treePositions[0].populationChunkZOffset * VECTOR_2.z;
+// floor(count*A/2^48) + 2 covers every LCG wrap interval in a batch,
+// regardless of its initial state. Split the product to avoid 64-bit overflow.
+__host__ __device__ constexpr uint64_t filter1IntervalBlockCount(const uint64_t count) {
+	const uint64_t high = (count >> 24) * LCG::MULTIPLIER;
+	const uint64_t low = ((high & UINT64_C(0xffffff)) << 24) + (count & UINT64_C(0xffffff)) * LCG::MULTIPLIER;
+	return (high >> 24) + (low >> 48) + 2;
+}
 
-	// uint64_t seed = (latticeX * 7847617 + latticeZ * -18218081) & LCG::MASK;
+// ceil((k*2^48 + boundary - firstZState)/A). Splitting k*remainder
+// avoids a 128-bit product even for a complete 2^48-state batch.
+__device__ int64_t filter1IntervalOffset(const uint64_t k, const uint64_t boundary, const uint64_t firstZState) {
+	constexpr uint64_t modulus = LCG::MASK + 1;
+	constexpr uint64_t quotient = modulus / LCG::MULTIPLIER;
+	constexpr uint64_t remainder = modulus % LCG::MULTIPLIER;
+	constexpr uint64_t splitQuotient = (remainder << 16) / LCG::MULTIPLIER;
+	constexpr uint64_t splitRemainder = (remainder << 16) % LCG::MULTIPLIER;
+	const uint64_t whole = k * quotient + (k >> 16) * splitQuotient;
+	const int64_t residual = static_cast<int64_t>((k >> 16) * splitRemainder + (k & UINT64_C(0xffff)) * remainder) + static_cast<int64_t>(boundary) - static_cast<int64_t>(firstZState);
+	const int64_t rounded = residual >= 0 ? (residual + static_cast<int64_t>(LCG::MULTIPLIER) - 1) / static_cast<int64_t>(LCG::MULTIPLIER) : residual / static_cast<int64_t>(LCG::MULTIPLIER);
+	return static_cast<int64_t>(whole) + rounded;
+}
 
+__global__ __launch_bounds__(ACTUAL_WORKERS_PER_BLOCK) void filter1(const uint64_t start, const uint64_t count, const uint64_t intervalCount) {
+	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex];
+	const TreeChunkPosition &tree = chunk.treePositions[0];
+	if (RELATIVE_COORDINATES_MODE) {
+		for (uint64_t index = static_cast<uint64_t>(blockIdx.x) * blockDim.x + threadIdx.x; index < count; index += static_cast<uint64_t>(gridDim.x) * blockDim.x) {
+			Random treeRandom = Random::withSeed(start + index);
+			if (!tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) continue;
+			const uint64_t seed = Random::withSeed(start + index).skip<-2>().seed;
+			const uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&filter1_numberOfResultsThisWorkerSet), 1);
+			if (resultIndex < ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_1_OUTPUT[resultIndex] = seed;
+		}
+		return;
+	}
+
+	const uint64_t firstSeed = (static_cast<uint64_t>(tree.populationChunkXOffset) << 44) + start;
+	const uint64_t firstZState = (firstSeed * LCG::MULTIPLIER + LCG::ADDEND) & LCG::MASK;
+	const uint64_t zBegin = static_cast<uint64_t>(tree.populationChunkZOffset) << 44;
+	constexpr uint64_t zWidth = UINT64_C(1) << 44;
+	// In wrap interval k, the next state has the required Z nibble exactly
+	// when zBegin <= firstZState + offset*A - k*2^48 < zEnd.
+	// Each block covers that contiguous interval; lanes cover disjoint offsets.
+	for (uint64_t k = blockIdx.x; k < intervalCount; k += gridDim.x) {
+		const int64_t begin = filter1IntervalOffset(k, zBegin, firstZState);
+		if (begin >= static_cast<int64_t>(count)) return;
+		// The interval contains floor(2^44/A) states, plus one when its
+		// first state's excess above zBegin is smaller than 2^44 mod A.
+		const uint64_t excess = ((firstZState + static_cast<uint64_t>(begin) * LCG::MULTIPLIER) & LCG::MASK) - zBegin;
+		const int64_t end = begin + static_cast<int64_t>(zWidth / LCG::MULTIPLIER) + static_cast<int64_t>(zWidth % LCG::MULTIPLIER > excess);
+		const uint64_t clippedBegin = static_cast<uint64_t>(constexprMax(begin, INT64_C(0)));
+		const uint64_t clippedEnd = static_cast<uint64_t>(constexprMin(constexprMax(end, INT64_C(0)), static_cast<int64_t>(count)));
+		for (uint64_t offset = clippedBegin + threadIdx.x; offset < clippedEnd; offset += blockDim.x) {
+			const uint64_t seed = firstSeed + offset;
+			Random treeRandom = Random::withSeed(seed).skip<1>();
+			if (!tree.testTypeAndAttributes(treeRandom, chunk.biome, chunk.version)) continue;
+			const uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&filter1_numberOfResultsThisWorkerSet), 1);
+			if (resultIndex < ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_1_OUTPUT[resultIndex] = seed;
+		}
+	}
+}
 #else
 void *filter1(void *start) {
 	ThreadData *star = static_cast<ThreadData *>(start);
 	uint64_t seed = (RELATIVE_COORDINATES_MODE ? UINT64_C(0) : (static_cast<uint64_t>(ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[currentPopulationChunkDataIndex].treePositions[0].populationChunkXOffset) << 44)) + star->start + star->index;
-#endif
 
 	Random treeRandom = Random::withSeed(seed);
 	if (RELATIVE_COORDINATES_MODE) {
@@ -94,10 +137,9 @@ void *filter1(void *start) {
 	uint64_t resultIndex = atomicAdd(reinterpret_cast<unsigned long long*>(&filter1_numberOfResultsThisWorkerSet), 1);
 	if (resultIndex >= ACTUAL_MAX_NUMBER_OF_RESULTS_PER_RUN) FILTER_RETURN;
 	FILTER_1_OUTPUT[resultIndex] = seed;
-#if (!CUDA_IS_PRESENT)
 	return NULL;
-#endif
 }
+#endif
 
 /* Filters possible internal Random states for those whose surrounding states, within the maximum possible range of calls, could generate all listed trees' positions and types. Specifically, successful states
 	- pass filter1, and
