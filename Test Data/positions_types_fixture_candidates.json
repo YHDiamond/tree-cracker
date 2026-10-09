@@ -1,0 +1,453 @@
+{
+  "description": "Read-only audit handoff: five fixed Java 1.16.1 positions/types-only fixtures. Expected seeds and source instrumentation are validation-only; never supply them to inference. Heights, leaf corners and root Y are absent. Public fixtures are upstream documentation; development fixtures are native placement records with saved pure-Forest biome evidence, not video inference results.",
+  "fixtures": [
+    {
+      "id": "public-16-1-1",
+      "input": {
+        "minecraft_version": "1.16.1",
+        "biome": "Forest",
+        "trees": [
+          {
+            "x": -124,
+            "z": -22,
+            "type": "Birch"
+          },
+          {
+            "x": -125,
+            "z": -26,
+            "type": "Oak"
+          },
+          {
+            "x": -123,
+            "z": -29,
+            "type": "Oak"
+          },
+          {
+            "x": -115,
+            "z": -27,
+            "type": "Birch"
+          }
+        ]
+      },
+      "validation_only": {
+        "world_seed": "3377920886278524622",
+        "structure_seed": "221165750652622",
+        "source": "Nel-S/tree-cracker@2393e5178d5078589496232fc14af30ca1e3b7b7:Test Data/1.16.1.cuh"
+      }
+    },
+    {
+      "id": "public-16-1-2",
+      "input": {
+        "minecraft_version": "1.16.1",
+        "biome": "Forest",
+        "trees": [
+          {
+            "x": -170,
+            "z": 133,
+            "type": "Birch"
+          },
+          {
+            "x": -171,
+            "z": 129,
+            "type": "Birch"
+          },
+          {
+            "x": -167,
+            "z": 143,
+            "type": "Birch"
+          },
+          {
+            "x": -161,
+            "z": 132,
+            "type": "Oak"
+          },
+          {
+            "x": -165,
+            "z": 140,
+            "type": "Birch"
+          }
+        ]
+      },
+      "validation_only": {
+        "world_seed": "-2891716383609216657",
+        "structure_seed": "157527116063087",
+        "source": "Nel-S/tree-cracker@2393e5178d5078589496232fc14af30ca1e3b7b7:Test Data/1.16.1.cuh"
+      }
+    },
+    {
+      "id": "dev-03-forest",
+      "input": {
+        "minecraft_version": "1.16.1",
+        "biome": "Forest",
+        "trees": [
+          {
+            "x": -58,
+            "z": -81,
+            "type": "Birch"
+          },
+          {
+            "x": -49,
+            "z": -91,
+            "type": "Oak"
+          },
+          {
+            "x": -62,
+            "z": -96,
+            "type": "Oak"
+          },
+          {
+            "x": -51,
+            "z": -84,
+            "type": "Oak"
+          },
+          {
+            "x": -50,
+            "z": -87,
+            "type": "Fancy_Oak"
+          },
+          {
+            "x": -60,
+            "z": -85,
+            "type": "Oak"
+          },
+          {
+            "x": -57,
+            "z": -95,
+            "type": "Oak"
+          },
+          {
+            "x": -52,
+            "z": -94,
+            "type": "Oak"
+          },
+          {
+            "x": -62,
+            "z": -89,
+            "type": "Oak"
+          }
+        ]
+      },
+      "validation_only": {
+        "world_seed": "2961051212562371049",
+        "structure_seed": "215932542980585",
+        "source": "data/1.16.1/dev/dev-03",
+        "records": [
+          {
+            "record_line": 1295,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1296,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1297,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1298,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1299,
+            "species": "oak",
+            "trunk_placer_class": "cqr",
+            "foliage_placer_class": "cpf"
+          },
+          {
+            "record_line": 1300,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1301,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1302,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1303,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          }
+        ],
+        "saved_chunk": {
+          "x": -4,
+          "z": -6,
+          "DataVersion": 2567,
+          "Status": "full",
+          "biome_count": 1024,
+          "biome_ids": [
+            4
+          ]
+        }
+      }
+    },
+    {
+      "id": "dev-04-forest",
+      "input": {
+        "minecraft_version": "1.16.1",
+        "biome": "Forest",
+        "trees": [
+          {
+            "x": 201,
+            "z": -44,
+            "type": "Birch"
+          },
+          {
+            "x": 196,
+            "z": -48,
+            "type": "Oak"
+          },
+          {
+            "x": 206,
+            "z": -43,
+            "type": "Oak"
+          },
+          {
+            "x": 204,
+            "z": -46,
+            "type": "Birch"
+          },
+          {
+            "x": 200,
+            "z": -40,
+            "type": "Oak"
+          },
+          {
+            "x": 196,
+            "z": -44,
+            "type": "Oak"
+          },
+          {
+            "x": 193,
+            "z": -46,
+            "type": "Oak"
+          },
+          {
+            "x": 205,
+            "z": -35,
+            "type": "Oak"
+          }
+        ]
+      },
+      "validation_only": {
+        "world_seed": "-6347246266427992408",
+        "structure_seed": "14458397300392",
+        "source": "data/1.16.1/dev/dev-04",
+        "records": [
+          {
+            "record_line": 26,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 27,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 28,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 29,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 30,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 31,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 32,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 33,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          }
+        ],
+        "saved_chunk": {
+          "x": 12,
+          "z": -3,
+          "DataVersion": 2567,
+          "Status": "full",
+          "biome_count": 1024,
+          "biome_ids": [
+            4
+          ]
+        }
+      }
+    },
+    {
+      "id": "dev-05-forest",
+      "input": {
+        "minecraft_version": "1.16.1",
+        "biome": "Forest",
+        "trees": [
+          {
+            "x": 71,
+            "z": -268,
+            "type": "Fancy_Oak"
+          },
+          {
+            "x": 75,
+            "z": -268,
+            "type": "Birch"
+          },
+          {
+            "x": 65,
+            "z": -264,
+            "type": "Birch"
+          },
+          {
+            "x": 68,
+            "z": -257,
+            "type": "Oak"
+          },
+          {
+            "x": 67,
+            "z": -261,
+            "type": "Fancy_Oak"
+          },
+          {
+            "x": 73,
+            "z": -271,
+            "type": "Oak"
+          },
+          {
+            "x": 64,
+            "z": -267,
+            "type": "Oak"
+          },
+          {
+            "x": 73,
+            "z": -262,
+            "type": "Oak"
+          },
+          {
+            "x": 78,
+            "z": -265,
+            "type": "Birch"
+          },
+          {
+            "x": 65,
+            "z": -259,
+            "type": "Oak"
+          }
+        ]
+      },
+      "validation_only": {
+        "world_seed": "-3378534973412872421",
+        "structure_seed": "9172045131547",
+        "source": "data/1.16.1/dev/dev-05",
+        "records": [
+          {
+            "record_line": 1212,
+            "species": "oak",
+            "trunk_placer_class": "cqr",
+            "foliage_placer_class": "cpf"
+          },
+          {
+            "record_line": 1213,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1214,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1215,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1216,
+            "species": "oak",
+            "trunk_placer_class": "cqr",
+            "foliage_placer_class": "cpf"
+          },
+          {
+            "record_line": 1217,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1218,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1219,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1220,
+            "species": "birch",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          },
+          {
+            "record_line": 1221,
+            "species": "oak",
+            "trunk_placer_class": "cqv",
+            "foliage_placer_class": "cpc"
+          }
+        ],
+        "saved_chunk": {
+          "x": 4,
+          "z": -17,
+          "DataVersion": 2567,
+          "Status": "full",
+          "biome_count": 1024,
+          "biome_ids": [
+            4
+          ]
+        }
+      }
+    }
+  ]
+}
