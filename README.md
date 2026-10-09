@@ -12,7 +12,7 @@ At the time of writing, this program only officially supports
 - Oak (normal or fancy) <!--, Spruce, Pine, --> or Birch trees.
 - Forest <!--, Birch Forest, or Taiga --> biomes.
 
-The program also uses CUDA, which requires one's device to have an NVIDIA CUDA-capable GPU installed. NVIDIA's CUDA also [does not support MacOS versions OS X 10.14 or beyond](https://developer.nvidia.com/nvidia-cuda-toolkit-developer-tools-mac-hosts). If either of those requirements disqualify your computer, you can instead run the program on a virtual GPU for free (at the time of writing this, and subject to certain runtime limits) through [Google Colab](https://colab.research.google.com).
+The program also uses CUDA, which requires one's device to have an NVIDIA CUDA-capable GPU installed. NVIDIA's CUDA also [does not support MacOS versions OS X 10.14 or beyond](https://developer.nvidia.com/nvidia-cuda-toolkit-developer-tools-mac-hosts). If either of those requirements disqualify your computer, you can instead use a free notebook GPU, subject to availability and usage limits. See [the current free-GPU options and benchmark instructions](#free-gpu-access-after-colab-quota).
 
 If using Windows, you will also need some form of C++ compiler installed; however, there are a myriad of environments that provide one ([Microsoft Visual C++](https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options), though that in turn requires [Visual Studio](https://visualstudio.microsoft.com); [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl); [Minimialist GNU for Windows-w64](https://www.mingw-w64.org); and others).
 
@@ -166,6 +166,78 @@ python3 tests/benchmark.py --positive-window --workers 2097152 --capacity 419430
   --output benchmark-results/runtime-five-seed
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
+
+## Free GPU access after Colab quota
+
+Checked October 9, 2026. **Kaggle Notebooks with the T4 x2 accelerator is the recommended next free runtime for this solver.** It supplies the same GPU model as our Colab measurements, but a different physical allocation: baseline and optimized binaries must both be measured again in the same new session.
+
+| Service | Current free access | Suitability for this run |
+|---|---|---|
+| [Kaggle Notebooks](https://www.kaggle.com/code) | [Weekly GPU allowance of 30 hours, sometimes higher](https://www.kaggle.com/docs/efficient-gpu-usage); [GPU sessions up to 12 hours](https://www.kaggle.com/docs/notebooks). Check the account's actual remaining allowance in notebook settings. | Best next option. [T4 x2 remains available; P100 was retired September 15, 2026](https://www.kaggle.com/product-announcements/735239). Each T4 has 16 GB of memory. |
+| [Google Colab](https://research.google.com/colaboratory/faq.html) | Free GPU access depends on demand and previous usage; Google does not publish fixed usage limits. | Our replacement GPU request was denied for usage limits on October 9. The dialog provided no recovery countdown. **No reliable reset time or guaranteed 24-hour wait can be given.** |
+| [Amazon SageMaker Studio Lab](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-lab-overview.html) | Existing customers can use GPU sessions up to four hours, capped at four hours per 24 hours, subject to availability. | AWS now says Studio Lab is closed to new customers, so it is useful only if an account already exists. |
+
+### Run the pending comparison on Kaggle
+
+1. Sign in to Kaggle, create a private Python notebook, and complete any account verification requested for GPU access. Select **Settings → Accelerator → GPU T4 x2**, and enable Internet so the notebook can clone the fork. An allocated GPU and a working `nvcc` compiler are required; setup on Kaggle has not yet been validated.
+2. Run the following cell once in a fresh session. It uses the existing benchmark programs, pins both source revisions, and exposes only the first physical GPU to every CUDA process. The second T4 is unused by this single-GPU solver.
+
+```python
+import os
+from pathlib import Path
+import subprocess
+from datetime import datetime, timezone
+
+subprocess.run(["nvcc", "--version"], check=True)
+hardware = subprocess.check_output([
+    "nvidia-smi", "--query-gpu=uuid,name,driver_version,memory.total",
+    "--format=csv,noheader",
+], text=True).strip()
+print(hardware, flush=True)
+env = os.environ.copy()
+env["CUDA_VISIBLE_DEVICES"] = hardware.splitlines()[0].split(",")[0].strip()
+
+repo = Path("/kaggle/working/tree-cracker")
+subprocess.run([
+    "git", "clone", "https://github.com/YHDiamond/tree-cracker.git", str(repo),
+], check=True)
+# This experimental revision contains the runtime-vs-runtime benchmark.
+subprocess.run(["git", "switch", "--detach", "344b6de"], cwd=repo, check=True)
+subprocess.run([
+    "python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py",
+], cwd=repo, env=env, check=True)
+
+results = Path("/kaggle/working") / (
+    "tree-benchmark-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+)
+variants = ["--variant", "baseline=8242664", "--variant", "optimized=344b6de"]
+# Five seeds, three repeats per variant; bounded validation-only windows.
+subprocess.run([
+    "python3", "tests/benchmark.py", *variants,
+    "--positive-window", "--workers", "2097152", "--capacity", "4194304",
+    "--repeats", "3", "--output", str(results / "five-seed"),
+], cwd=repo, env=env, check=True)
+# Two rich observation sets, three alternating repeats per variant;
+# complete searches, with no known seed supplied to either solver.
+subprocess.run([
+    "python3", "tests/benchmark_runtime.py", *variants,
+    "--repeats", "3", "--expected-hardware", hardware,
+    "--output", str(results / "full-search"),
+], cwd=repo, env=env, check=True)
+print("Reports and logs:", results, flush=True)
+```
+
+3. Download the reports and logs from the printed directory before ending the session. They are written under Kaggle's `/kaggle/working` output directory. Stop the GPU session when finished to conserve the allowance. Repeating the cell requires a new clone directory and new output paths; the benchmark programs intentionally refuse existing output directories.
+
+The five-seed command runs **30 bounded regression trials**, compares exact sorted candidate sets and the same positive windows, and retains each fixture's expected seed. The optimized test executable also checks the new leaf, Birch-selection and rewind predicates against independent reference calculations on the GPU. These tests establish output parity in the tested windows; their times do not represent full recoveries.
+
+The full-search command runs **12 exhaustive trials** across the fresh four-tree world and documented five-tree example. Its primary metric is **complete observations available → correct 48-bit seed printed**, including writing the input, parsing, process/CUDA startup, search and output. Each reusable binary is compiled once before these timers; build time is recorded separately. GPU allocation, downloading the source and collecting tree observations are outside the timers. Validation truth is checked after each exhaustive run and never restricts the search or stops it early. Complete-output time is also recorded; the documented example remains ambiguous with four candidates.
+
+Do not use the old Colab report as `--reference-report` on Kaggle: that option requires the same physical GPU UUID and configuration. Compare both revisions within the new allocation. Both programs reject candidate differences, unsuccessful runs and overflow; the full-search program also rejects hardware changes.
+
+### Optimization status when Colab stopped
+
+The released implementation and its completed multi-seed evidence are committed on the fork's default branch, **`benchmark-main`**. The next optimizations are pushed separately on **`opt/runtime-speed`**, pinned above at `344b6de`, and await the remaining GPU validation. In the first paired fresh-world trial, the correct seed appeared after **33.398 s optimized versus 39.610 s baseline**, with identical unique output; complete searches took 46.632 s and 54.986 s respectively. This is one paired trial, not a validated median improvement. Colab ended the allocation before the multi-seed checks completed, and no Kaggle performance result is claimed yet.
 
 ## Acknowledgements
 I would like to give very large Thank You's to
