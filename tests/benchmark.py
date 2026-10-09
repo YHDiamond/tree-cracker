@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Compile and compare five fixed tree workloads on one CUDA device.
+
+Default runs are exhaustive. --profile-batches is an explicitly incomplete
+performance diagnostic; its results must never be called recovered seeds.
+"""
+import argparse
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import subprocess
+import tarfile
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+FLAGS = ['-O3', '-arch=sm_75', '-Xcompiler=-mcmodel=large',
+         '-Xlinker=--no-relax', '--cudart=shared']
+
+
+def command(args, **kwargs):
+    return subprocess.check_output(args, text=True, **kwargs).strip()
+
+
+def prepare(revision, fixture, destination, workers, capacity, profile_batches):
+    destination.mkdir(parents=True, exist_ok=False)
+    archive = subprocess.check_output(['git', 'archive', revision], cwd=ROOT)
+    with tarfile.open(fileobj=io.BytesIO(archive)) as stream:
+        stream.extractall(destination, filter='data')
+    # All candidates use the same correctness repair, independently of speed edits.
+    p = destination / 'src/Settings and Input Data Processing.cuh'
+    text = p.read_text()
+    for declaration in ['uint64_t filterStorageB[',
+                        'DoubleStorage filterDoubleStorageA[',
+                        'DoubleStorage filterDoubleStorageB[']:
+        text = text.replace('__device__ ' + declaration, '__managed__ ' + declaration)
+    p.write_text(text)
+    trees = fixture['input']['trees']
+    assert fixture['input']['biome'] == 'Forest'
+    assert fixture['input']['minecraft_version'] == '1.16.1'
+    assert all(set(tree) == {'x', 'z', 'type'} for tree in trees)
+    rows = [f'    {{Version::v1_16_1, TreeType::{t["type"]}, '
+            f'Coordinate({t["x"]}, {t["z"]}), Biome::Forest}}' for t in trees]
+    p = destination / 'Settings (MODIFY THIS).cuh'
+    text = p.read_text()
+    a = text.index('__device__ constexpr InputData INPUT_DATA[] = {')
+    b = text.index('\n};', a) + 3
+    text = text[:a] + '__device__ constexpr InputData INPUT_DATA[] = {\n' + ',\n'.join(rows) + '\n};' + text[b:]
+    text = text.replace('NUMBER_OF_WORKERS = 4294967296;', f'NUMBER_OF_WORKERS = {workers};')
+    text = text.replace('MAX_NUMBER_OF_RESULTS_PER_RUN = AUTO;', f'MAX_NUMBER_OF_RESULTS_PER_RUN = {capacity};')
+    text = text.replace('PRINT_TIMESTAMPS_FREQUENCY = 256;', 'PRINT_TIMESTAMPS_FREQUENCY = 1;')
+    text = text.replace('"output.txt"', '"results.txt"')
+    p.write_text(text)
+    if profile_batches:
+        p = destination / 'main.cu'
+        text = p.read_text()
+        text = text.replace('partialRun <= ACTUAL_NUMBER_OF_PARTIAL_RUNS', 'partialRun <= ACTUAL_PARTIAL_RUN_TO_BEGIN_FROM')
+        marker = '\n\t\tif (!SILENT_MODE) {\n\t\t\tstd::fprintf(stderr, "Beginning partial run'
+        assert marker in text
+        text = text.replace(marker, f'\n\t\trunEndSeed = constexprMin(runEndSeed, runStartSeed + UINT64_C({workers * profile_batches}));' + marker, 1)
+        p.write_text(text)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--variant', action='append', required=True, help='name=commit; first is baseline')
+    ap.add_argument('--output', type=Path, required=True)
+    ap.add_argument('--workers', type=int, default=1 << 28)
+    ap.add_argument('--capacity', type=int, default=1 << 24)
+    ap.add_argument('--profile-batches', type=int, default=0)
+    ap.add_argument('--case', action='append', help='optional fixture ID filter')
+    args = ap.parse_args()
+    args.output = args.output.resolve()
+    assert args.workers > 0 and args.capacity > 0 and args.profile_batches >= 0
+    fixtures = json.loads((ROOT / 'Test Data/positions_types_fixture_candidates.json').read_text())['fixtures']
+    assert len(fixtures) == 5 and len({f['validation_only']['world_seed'] for f in fixtures}) == 5
+    if args.case:
+        fixtures = [f for f in fixtures if f['id'] in args.case]
+        assert len(fixtures) == len(args.case)
+    args.output.mkdir(parents=True, exist_ok=False)
+    gpu = command(['nvidia-smi', '--query-gpu=uuid,name,driver_version,memory.total', '--format=csv,noheader'])
+    report = {'hardware': gpu, 'compiler': command(['nvcc', '--version']),
+              'exhaustive': not bool(args.profile_batches),
+              'workers': args.workers, 'capacity': args.capacity, 'flags': FLAGS,
+              'profile_batches': args.profile_batches, 'results': []}
+    env = os.environ.copy()
+    env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + env.get('LD_LIBRARY_PATH', '')
+    references = {}
+    print(json.dumps({k: v for k, v in report.items() if k != 'results'}), flush=True)
+    for variant in args.variant:
+        name, revision = variant.split('=', 1)
+        sha = command(['git', 'rev-parse', revision], cwd=ROOT)
+        for fixture in fixtures:
+            assert command(['nvidia-smi', '--query-gpu=uuid,name,driver_version,memory.total', '--format=csv,noheader']) == gpu
+            target = args.output / name / fixture['id']
+            prepare(sha, fixture, target, args.workers, args.capacity, args.profile_batches)
+            start = time.monotonic()
+            with (target / 'build.log').open('w') as log:
+                subprocess.run(['nvcc', 'main.cu', '-o', 'main'] + FLAGS, cwd=target, stdout=log, stderr=subprocess.STDOUT, check=True)
+            build_seconds = time.monotonic() - start
+            print(f'RUN {name} {fixture["id"]} build={build_seconds:.3f}s', flush=True)
+            start = time.monotonic()
+            with (target / 'run.log').open('w') as log:
+                proc = subprocess.Popen([str(target / 'main')], cwd=target, env=env,
+                                        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                for line in proc.stdout:
+                    log.write(line)
+                    log.flush()
+                    print(line, end='', flush=True)
+                exit_code = proc.wait()
+            seconds = time.monotonic() - start
+            log_text = (target / 'run.log').read_text()
+            candidates = sorted(set(map(int, (target / 'results.txt').read_text().splitlines())))
+            valid = exit_code == 0 and 'ignoring last' not in log_text
+            digest = hashlib.sha256(json.dumps(candidates, separators=(',', ':')).encode()).hexdigest()
+            row = {'variant': name, 'commit': sha, 'case': fixture['id'], 'seconds': seconds,
+                   'build_seconds': build_seconds, 'exit_code': exit_code, 'valid': valid,
+                   'candidate_count': len(candidates), 'candidate_sha256': digest,
+                   'expected_recovered': int(fixture['validation_only']['structure_seed']) in candidates,
+                   'input_sha256': hashlib.sha256(json.dumps(fixture['input'], sort_keys=True).encode()).hexdigest()}
+            if fixture['id'] not in references:
+                references[fixture['id']] = (candidates, valid)
+                row['same_output'] = True
+            else:
+                previous, previous_valid = references[fixture['id']]
+                row['same_output'] = valid and previous_valid and candidates == previous
+            report['results'].append(row)
+            (args.output / 'report.json').write_text(json.dumps(report, indent=2))
+            print('RESULT ' + json.dumps(row), flush=True)
+            assert valid, row
+            assert row['same_output'], row
+            if report['exhaustive']:
+                assert row['expected_recovered'], row
+
+
+if __name__ == '__main__':
+    main()
