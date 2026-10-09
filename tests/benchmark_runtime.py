@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Compare data-ready to complete 48-bit candidate output on one CUDA GPU.
+"""Compare reusable CUDA solvers from observations available to correct seed output.
 
-Source checkout/download and GPU provisioning are outside the measurement.
-Compiled observations pay preparation + nvcc + startup + exhaustive search on
-every trial. Runtime observations pay preparation + startup + exhaustive search;
-their reusable build is recorded separately and added to cold-start totals.
-Both paths receive identical observations, never a seed or a search hint.
+The expected seed is validation-only: it is consulted after the full search,
+never passed to a solver, used to restrict its domain, or used to stop a run.
+Input writing, process/CUDA startup, parsing, search and output are timed.
+Source checkout, GPU allocation and each reusable build are outside that time.
 """
 import argparse
 import hashlib
@@ -22,6 +21,13 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 FLAGS = ['-O3', '-arch=sm_75', '-Xcompiler=-mcmodel=large',
          '-Xlinker=--no-relax', '--cudart=shared']
+CASES = {
+    'fresh-four-tree': ('fresh-16-1-20261009.txt', 128110318218222,
+                        [128110318218222]),
+    'documented-five-tree': ('documented-16-1.txt', 157527116063087,
+                             [89593286004526, 115468527086863,
+                              157527116063087, 272740909957168]),
+}
 
 
 def hardware():
@@ -29,129 +35,97 @@ def hardware():
                                     '--format=csv,noheader'], text=True).strip()
 
 
-def compiled_header(observations):
-    rows = []
-    states = {'0': 'LeafWasNotPlaced', '1': 'LeafWasPlaced', '?': 'Unknown'}
-    for line in observations.splitlines():
-        fields = line.split('#', 1)[0].split()
-        if not fields:
-            continue
-        version, biome, kind, x, z, lower, upper, leaves = fields
-        heights = '' if lower == upper == '0' else lower + ', ' + upper
-        corners = ', '.join('LeafState::' + states[c] for c in leaves)
-        rows.append(f'{{Version::v{version.replace(".", "_")}, TreeType::{kind}, '
-                    f'Coordinate({x}, {z}), Biome::{biome}, PossibleHeightsRange({heights}), '
-                    f'std::array<LeafState, NUMBER_OF_LEAF_POSITIONS>({{{corners}}})}}')
-    return '__device__ constexpr InputData INPUT_DATA[] = {\n' + ',\n'.join(rows) + '\n};'
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--baseline', default='a69f236')
-    ap.add_argument('--source-repo', type=Path, default=ROOT, help='Existing repository supplying pinned source history')
-    ap.add_argument('--runtime-revision', default='HEAD', help='Revision of the runtime source being built')
+    ap.add_argument('--variant', action='append', required=True, help='name=revision; first is baseline')
+    ap.add_argument('--source-repo', type=Path, default=ROOT)
+    ap.add_argument('--reuse-binary', action='append', default=[], help='name=already built binary path')
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--repeats', type=int, default=3)
-    ap.add_argument('--expected-hardware', help='Require this exact UUID/name/driver/memory string')
+    ap.add_argument('--expected-hardware', required=True, help='Exact UUID/name/driver/memory string')
     args = ap.parse_args()
-    assert args.repeats > 0
+    assert args.repeats > 0 and len(args.variant) >= 2
     output = args.output.resolve()
     output.mkdir(exist_ok=False, parents=True)
     gpu = hardware()
-    if args.expected_hardware:
-        assert gpu == args.expected_hardware, (gpu, args.expected_hardware)
-    revision = subprocess.check_output(['git', 'rev-parse', args.baseline], cwd=args.source_repo, text=True).strip()
-    baseline = output / 'compiled'
-    baseline.mkdir()
-    with tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', revision], cwd=args.source_repo))) as archive:
-        archive.extractall(baseline, filter='data')
-    settings = (baseline / 'Settings (MODIFY THIS).cuh').read_text()
-    # Both paths flush candidate stdout so the first-output time is observable.
-    main_file = baseline / 'main.cu'
-    main_text = main_file.read_text()
-    line = next(line for line in main_text.splitlines() if 'if (!SILENT_MODE) std::printf' in line and 'ACTUAL_TYPES_TO_OUTPUT == OutputType::Structure_Seeds' in line)
-    main_file.write_text(main_text.replace(line, line + '\n\t\t\t\t\tstd::fflush(stdout);', 1))
-    runtime_binary = output / 'runtime-main'
-    start = time.monotonic()
-    with (output / 'runtime-build.log').open('w') as log:
-        subprocess.run(['nvcc', 'main.cu', '-o', str(runtime_binary)] + FLAGS, cwd=ROOT,
-                       stdout=log, stderr=subprocess.STDOUT, check=True)
-    build_seconds = time.monotonic() - start
-    cases = {
-        'fresh-four-tree': (ROOT / 'Test Data/fresh-16-1-20261009.txt').read_text(),
-        'documented-five-tree': (ROOT / 'Test Data/documented-16-1.txt').read_text(),
-    }
+    assert gpu == args.expected_hardware, (gpu, args.expected_hardware)
+    reused = dict(item.split('=', 1) for item in args.reuse_binary)
+    variants = {}
+    for item in args.variant:
+        name, ref = item.split('=', 1)
+        assert re.fullmatch(r'[a-zA-Z0-9_-]+', name) and name not in variants
+        revision = subprocess.check_output(['git', 'rev-parse', ref], cwd=args.source_repo, text=True).strip()
+        source = output / name
+        source.mkdir()
+        with tarfile.open(fileobj=io.BytesIO(subprocess.check_output(['git', 'archive', revision], cwd=args.source_repo))) as archive:
+            archive.extractall(source, filter='data')
+        binary = Path(reused[name]).resolve() if name in reused else source / 'main'
+        build_seconds = None
+        if name not in reused:
+            start = time.monotonic()
+            with (source / 'build.log').open('w') as log:
+                subprocess.run(['nvcc', 'main.cu', '-o', str(binary)] + FLAGS,
+                               cwd=source, stdout=log, stderr=subprocess.STDOUT, check=True)
+            build_seconds = time.monotonic() - start
+        variants[name] = {'revision': revision, 'binary': str(binary), 'build_seconds': build_seconds,
+                          'build_reused': name in reused,
+                          'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest()}
+        print('BUILD ' + json.dumps({name: variants[name]}), flush=True)
     report = {'hardware': gpu, 'compiler': subprocess.check_output(['nvcc', '--version'], text=True).strip(),
-              'runtime_commit': subprocess.check_output(['git', 'rev-parse', args.runtime_revision], cwd=args.source_repo, text=True).strip(),
-              'baseline_commit': revision, 'flags': FLAGS, 'runtime_build_seconds': build_seconds,
-              'metric': 'observations_available_to_complete_exhaustive_candidate_output',
+              'variants': variants, 'flags': FLAGS,
+              'metric': 'observations_available_to_correct_seed_emitted',
+              'validation_only_truth_checked_after_exhaustive_run': True,
               'exhaustive': True, 'domain_states': 1 << 44, 'seed_supplied_to_solver': False,
-              'baseline_stdout_flush_only_change': True, 'repeats': args.repeats, 'results': []}
+              'timing_boundary': {'start': 'complete tree observations available in active GPU environment',
+                                  'includes': ['input writing', 'process and CUDA startup', 'parsing and chunk construction',
+                                               'search until correct seed printed'],
+                                  'excludes': ['observation collection', 'GPU provisioning', 'source download', 'reusable build']},
+              'repeats': args.repeats, 'results': []}
     env = os.environ.copy()
     env['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64:' + env.get('LD_LIBRARY_PATH', '')
-    print('BUILD runtime', build_seconds, flush=True)
-    references = {}
-    for case, observations in cases.items():
+    for case, (filename, truth, expected) in CASES.items():
+        observations = (ROOT / 'Test Data' / filename).read_text()
         for repeat in range(args.repeats):
-            order = ['compiled', 'runtime'] if repeat % 2 == 0 else ['runtime', 'compiled']
-            for variant in order:
+            order = list(variants) if repeat % 2 == 0 else list(reversed(variants))
+            for name in order:
                 assert hardware() == gpu
-                work = output / f'{case}-{repeat}-{variant}'
+                work = output / f'{case}-{repeat}-{name}'
                 work.mkdir()
-                start = time.monotonic()  # All tree observations are now available.
-                if variant == 'compiled':
-                    header = compiled_header(observations)
-                    a = settings.index('__device__ constexpr InputData INPUT_DATA[] = {')
-                    b = settings.index('\n};', a) + 3
-                    (baseline / 'Settings (MODIFY THIS).cuh').write_text(settings[:a] + header + settings[b:])
-                    compile_start = time.monotonic()
-                    with (work / 'build.log').open('w') as log:
-                        subprocess.run(['nvcc', 'main.cu', '-o', str(work / 'main')] + FLAGS,
-                                       cwd=baseline, stdout=log, stderr=subprocess.STDOUT, check=True)
-                    compile_seconds = time.monotonic() - compile_start
-                    command = [str(work / 'main')]
-                else:
-                    (work / 'observations.txt').write_text(observations)
-                    compile_seconds = 0.
-                    command = [str(runtime_binary), str(work / 'observations.txt')]
-                solve_start = time.monotonic()
-                first_output_seconds = None
+                start = time.monotonic()  # Observation contents are now available.
+                (work / 'observations.txt').write_text(observations)
+                emissions = []
                 with (work / 'run.log').open('w') as log:
-                    proc = subprocess.Popen(command, cwd=work, env=env, text=True,
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    proc = subprocess.Popen([variants[name]['binary'], str(work / 'observations.txt')],
+                                            cwd=work, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                     for line in proc.stdout:
-                        if re.fullmatch(r'\d+\s*', line) and first_output_seconds is None:
-                            first_output_seconds = time.monotonic() - start
+                        if re.fullmatch(r'\d+\s*', line):
+                            emissions.append((int(line), time.monotonic() - start))
                         log.write(line)
                     exit_code = proc.wait()
                 finish = time.monotonic()
-                text = (work / 'run.log').read_text()
+                log_text = (work / 'run.log').read_text()
                 candidates = sorted(set(map(int, (work / 'output.txt').read_text().splitlines())))
-                valid = exit_code == 0 and 'ignoring last' not in text
-                assert valid and candidates, (case, variant, exit_code)
-                references.setdefault(case, candidates)
-                assert candidates == references[case], (case, variant, candidates, references[case])
-                row = {'case': case, 'variant': variant, 'repeat': repeat,
-                       'end_to_end_seconds': finish - start, 'solver_seconds': finish - solve_start,
-                       'compile_seconds': compile_seconds, 'first_candidate_seconds': first_output_seconds,
-                       'cold_end_to_end_seconds': finish - start + (build_seconds if variant == 'runtime' else 0.),
+                assert exit_code == 0 and 'ignoring last' not in log_text and candidates == expected, (case, name, exit_code, candidates)
+                correct_seconds = min(seconds for seed, seconds in emissions if seed == truth)
+                row = {'case': case, 'variant': name, 'repeat': repeat,
+                       'correct_seed_seconds': correct_seconds, 'complete_output_seconds': finish - start,
+                       'first_candidate_seconds': emissions[0][1],
+                       'unique_seed': len(candidates) == 1,
                        'input_sha256': hashlib.sha256(observations.encode()).hexdigest(),
-                       'candidate_set': candidates, 'exit_code': exit_code, 'overflow': False, 'same_output': True}
+                       'candidate_set': candidates, 'candidate_emissions': emissions,
+                       'exit_code': exit_code, 'overflow': False, 'same_output': True}
                 report['results'].append(row)
                 (output / 'report.json').write_text(json.dumps(report, indent=2))
                 print('TRIAL ' + json.dumps(row), flush=True)
     report['summary'] = {}
-    for case in cases:
-        summary = {}
-        for variant in ['compiled', 'runtime']:
-            rows = [r for r in report['results'] if r['case'] == case and r['variant'] == variant]
-            summary[variant] = {key: statistics.median(r[key] for r in rows) for key in
-                                ['end_to_end_seconds', 'solver_seconds', 'compile_seconds',
-                                 'first_candidate_seconds', 'cold_end_to_end_seconds']}
-        summary['end_to_end_speedup'] = summary['compiled']['end_to_end_seconds'] / summary['runtime']['end_to_end_seconds']
-        report['summary'][case] = summary
+    for case in CASES:
+        report['summary'][case] = {}
+        for name in variants:
+            rows = [r for r in report['results'] if r['case'] == case and r['variant'] == name]
+            report['summary'][case][name] = {key: statistics.median(r[key] for r in rows)
+                for key in ['correct_seed_seconds', 'complete_output_seconds', 'first_candidate_seconds']}
     (output / 'report.json').write_text(json.dumps(report, indent=2))
-    print('RUNTIME_COMPARISON ' + json.dumps(report), flush=True)
+    print('RUNTIME_SPEED_REPORT ' + json.dumps(report), flush=True)
 
 
 if __name__ == '__main__':
