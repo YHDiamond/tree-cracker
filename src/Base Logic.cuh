@@ -212,7 +212,7 @@ struct IntInclusiveRange {
 	static constexpr int32_t NO_MINIMUM = INT32_MIN;
 	static constexpr int32_t NO_MAXIMUM = INT32_MAX;
 
-	__device__ constexpr IntInclusiveRange() noexcept : lowerBound(this->NO_MINIMUM), upperBound(this->NO_MAXIMUM) {}
+	__host__ __device__ constexpr IntInclusiveRange() noexcept : lowerBound(this->NO_MINIMUM), upperBound(this->NO_MAXIMUM) {}
 	__device__ constexpr IntInclusiveRange(const IntInclusiveRange &other) noexcept : lowerBound(other.lowerBound), upperBound(other.upperBound) {}
 	__device__ constexpr IntInclusiveRange(int32_t value) noexcept : lowerBound(value), upperBound(value) {}
 	__device__ constexpr IntInclusiveRange(int32_t lowerBound, int32_t upperBound) noexcept : lowerBound(constexprMin(lowerBound, upperBound)), upperBound(constexprMax(lowerBound, upperBound)) {}
