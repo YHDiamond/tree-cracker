@@ -9,7 +9,7 @@
 constexpr const uint64_t NUMBER_OF_WORKERS = 4294967296;
 // If you are using CUDA, the number of workers (threads) you wish to use per GPU block.
 #if CUDA_IS_PRESENT
-constexpr const uint64_t WORKERS_PER_BLOCK = 256;
+constexpr const uint64_t WORKERS_PER_BLOCK = 128;
 #endif
 /* The filepath you wish to direct the output to. If that file already exists, a file with a different name will be created instead.
    If set to NULL or the empty string, the output will only be printed to the screen.*/

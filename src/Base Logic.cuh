@@ -2,7 +2,7 @@
 #define __BASE_CUH
 
 #include "Non-CUDA Support.cuh"
-#include <set>
+#include <algorithm>
 #include <string>
 
 /* ==========================================================================================
@@ -160,12 +160,8 @@ void transferEntries(const T *source, T *destination, const size_t numberOfEntri
 // Removes duplicates from an array, and also orders its elements.
 template <class T>
 void removeDuplicatesAndOrder(T *array, size_t *numberOfEntries) {
-	std::set<T> set;
-	for (uint64_t i = 0; i < *numberOfEntries; ++i) set.insert(array[i]);
-	*numberOfEntries = static_cast<size_t>(set.size());
-	uint64_t count = 0;
-	for (auto i = set.cbegin(); i != set.cend(); ++i) array[count++] = *i;
-	// set.clear();
+	std::sort(array, array + *numberOfEntries);
+	*numberOfEntries = static_cast<size_t>(std::unique(array, array + *numberOfEntries) - array);
 }
 
 
