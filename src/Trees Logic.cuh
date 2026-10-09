@@ -271,13 +271,13 @@ struct OakAttributes {
 	SetOfLeafStates leafStates;
 
 	__device__ constexpr OakAttributes() noexcept :
-		trunkHeight(OakAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(IntInclusiveRange(OakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, OakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates() {}
 	__device__ constexpr OakAttributes(const OakAttributes &other) noexcept :
-		trunkHeight(other.trunkHeight, OakAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(other.trunkHeight, IntInclusiveRange(OakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, OakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates(other.leafStates) {}
 	__device__ constexpr OakAttributes(const PossibleHeightsRange &trunkHeight, const SetOfLeafStates &leafStates) noexcept :
-		trunkHeight(trunkHeight, OakAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(trunkHeight, IntInclusiveRange(OakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, OakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates(leafStates) {}
 
 	// Returns whether the given random instance under the specified version would generate an oak tree with attributes matching the initialized one.
@@ -330,11 +330,11 @@ struct FancyOakAttributes {
 	static constexpr PossibleHeightsRange TRUNK_HEIGHT_BOUNDS = {3, 14};
 
 	__device__ constexpr FancyOakAttributes() noexcept :
-		trunkHeight(FancyOakAttributes::TRUNK_HEIGHT_BOUNDS) {}
+		trunkHeight(IntInclusiveRange(FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)) {}
 	__device__ constexpr FancyOakAttributes(const FancyOakAttributes &other) noexcept :
-		trunkHeight(other.trunkHeight, FancyOakAttributes::TRUNK_HEIGHT_BOUNDS) {}
+		trunkHeight(other.trunkHeight, IntInclusiveRange(FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)) {}
 	__device__ constexpr FancyOakAttributes(const PossibleHeightsRange &trunkHeight) noexcept :
-		trunkHeight(trunkHeight, FancyOakAttributes::TRUNK_HEIGHT_BOUNDS) {}
+		trunkHeight(trunkHeight, IntInclusiveRange(FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, FancyOakAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)) {}
 
 	// Returns whether the given random instance under the specified version would generate an oak tree with attributes matching the initialized one.
 	// The Random instance will be advanced 2-3 times.
@@ -422,13 +422,13 @@ struct BirchAttributes {
 	SetOfLeafStates leafStates;
 
 	__device__ constexpr BirchAttributes() :
-		trunkHeight(BirchAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(IntInclusiveRange(BirchAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, BirchAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates() {}
 	__device__ constexpr BirchAttributes(const BirchAttributes &other) :
-		trunkHeight(other.trunkHeight, BirchAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(other.trunkHeight, IntInclusiveRange(BirchAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, BirchAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates(other.leafStates) {}
 	__device__ constexpr BirchAttributes(const PossibleHeightsRange &trunkHeight, const SetOfLeafStates &leafStates) :
-		trunkHeight(trunkHeight, BirchAttributes::TRUNK_HEIGHT_BOUNDS),
+		trunkHeight(trunkHeight, IntInclusiveRange(BirchAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, BirchAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
 		leafStates(leafStates) {}
 
 	__device__ bool canBeGeneratedBy(Random &random, const Version version) const {
@@ -490,18 +490,18 @@ struct PineAttributes {
 	static constexpr PossibleRadiiRange LEAVES_WIDEST_RADIUS_BOUNDS = {1, 3};
 
 	__device__ constexpr PineAttributes() :
-		trunkHeight(PineAttributes::TRUNK_HEIGHT_BOUNDS),
-		leavesHeight(PineAttributes::LEAVES_HEIGHT_BOUNDS),
-		leavesWidestRadius(PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS) {}
+		trunkHeight(IntInclusiveRange(PineAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, PineAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		leavesHeight(IntInclusiveRange(PineAttributes::LEAVES_HEIGHT_BOUNDS.lowerBound, PineAttributes::LEAVES_HEIGHT_BOUNDS.upperBound)),
+		leavesWidestRadius(IntInclusiveRange(PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)) {}
 	__device__ constexpr PineAttributes(const PineAttributes &other) :
-		trunkHeight(other.trunkHeight, PineAttributes::TRUNK_HEIGHT_BOUNDS),
-		leavesHeight(other.leavesHeight, PineAttributes::LEAVES_HEIGHT_BOUNDS),
-		leavesWidestRadius(other.leavesWidestRadius, PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS) {}
+		trunkHeight(other.trunkHeight, IntInclusiveRange(PineAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, PineAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		leavesHeight(other.leavesHeight, IntInclusiveRange(PineAttributes::LEAVES_HEIGHT_BOUNDS.lowerBound, PineAttributes::LEAVES_HEIGHT_BOUNDS.upperBound)),
+		leavesWidestRadius(other.leavesWidestRadius, IntInclusiveRange(PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)) {}
 	__device__ constexpr PineAttributes(const PossibleHeightsRange &trunkHeight, const PossibleHeightsRange &leavesHeight, const PossibleRadiiRange &leavesWidestRadius) :
 		// Mins/maxs are to prevent overflows
-		trunkHeight({trunkHeight.lowerBound + 1, constexprMin(trunkHeight.upperBound, PineAttributes::TRUNK_HEIGHT_BOUNDS.upperBound) + 1}, PineAttributes::TRUNK_HEIGHT_BOUNDS),
-		leavesHeight({constexprMax(leavesHeight.lowerBound, PineAttributes::LEAVES_HEIGHT_BOUNDS.lowerBound) - 1, leavesHeight.upperBound - 1}, PineAttributes::LEAVES_HEIGHT_BOUNDS),
-		leavesWidestRadius(leavesWidestRadius, PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS) {}
+		trunkHeight({trunkHeight.lowerBound + 1, constexprMin(trunkHeight.upperBound, PineAttributes::TRUNK_HEIGHT_BOUNDS.upperBound) + 1}, IntInclusiveRange(PineAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, PineAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		leavesHeight({constexprMax(leavesHeight.lowerBound, PineAttributes::LEAVES_HEIGHT_BOUNDS.lowerBound) - 1, leavesHeight.upperBound - 1}, IntInclusiveRange(PineAttributes::LEAVES_HEIGHT_BOUNDS.lowerBound, PineAttributes::LEAVES_HEIGHT_BOUNDS.upperBound)),
+		leavesWidestRadius(leavesWidestRadius, IntInclusiveRange(PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, PineAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)) {}
 
 	__device__ bool canBeGeneratedBy(Random &random, const Version version) const {
 		if (!this->trunkHeight.contains(TrunkHeight::getNextValueInRange(random, 7, 4))) return false;
@@ -546,24 +546,24 @@ struct SpruceAttributes {
 	static constexpr PossibleRadiiRange TOPMOST_LEAVES_RADIUS_BOUNDS = {0, 1};
 
 	__device__ constexpr SpruceAttributes() :
-		trunkHeight(SpruceAttributes::TRUNK_HEIGHT_BOUNDS),
-		logsBelowBottommostLeaves(SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS),
-		leavesAboveTrunk(SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS),
-		leavesWidestRadius(SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS),
-		topmostLeavesRadius(SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS) {}
+		trunkHeight(IntInclusiveRange(SpruceAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		logsBelowBottommostLeaves(IntInclusiveRange(SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.lowerBound, SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.upperBound)),
+		leavesAboveTrunk(IntInclusiveRange(SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.upperBound)),
+		leavesWidestRadius(IntInclusiveRange(SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)),
+		topmostLeavesRadius(IntInclusiveRange(SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.lowerBound, SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.upperBound)) {}
 	__device__ constexpr SpruceAttributes(const SpruceAttributes &other) :
-		trunkHeight(other.trunkHeight, SpruceAttributes::TRUNK_HEIGHT_BOUNDS),
-		logsBelowBottommostLeaves(other.logsBelowBottommostLeaves, SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS),
-		leavesAboveTrunk(other.leavesAboveTrunk, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS),
-		leavesWidestRadius(other.leavesWidestRadius, SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS),
-		topmostLeavesRadius(other.topmostLeavesRadius, SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS) {}
+		trunkHeight(other.trunkHeight, IntInclusiveRange(SpruceAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		logsBelowBottommostLeaves(other.logsBelowBottommostLeaves, IntInclusiveRange(SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.lowerBound, SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.upperBound)),
+		leavesAboveTrunk(other.leavesAboveTrunk, IntInclusiveRange(SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.upperBound)),
+		leavesWidestRadius(other.leavesWidestRadius, IntInclusiveRange(SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)),
+		topmostLeavesRadius(other.topmostLeavesRadius, IntInclusiveRange(SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.lowerBound, SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.upperBound)) {}
 	__device__ constexpr SpruceAttributes(const PossibleHeightsRange &trunkHeight, const PossibleHeightsRange &logsBelowBottommostLeaves, const PossibleRadiiRange &leavesWidestRadius, const PossibleRadiiRange &topmostLeavesRadius, const PossibleRadiiRange &leavesAboveTrunk) :
 		// Maxs/mins are to prevent overflows
-		trunkHeight({constexprMax(trunkHeight.lowerBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound) + constexprMax(leavesAboveTrunk.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound) - 1, constexprMin(trunkHeight.upperBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.upperBound) + constexprMin(leavesAboveTrunk.upperBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.upperBound) - 1}, SpruceAttributes::TRUNK_HEIGHT_BOUNDS),
-		logsBelowBottommostLeaves(logsBelowBottommostLeaves, SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS),
-		leavesAboveTrunk({constexprMax(leavesAboveTrunk.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound) - 1, leavesAboveTrunk.upperBound - 1}, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS),
-		leavesWidestRadius(leavesWidestRadius, SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS),
-		topmostLeavesRadius(topmostLeavesRadius, SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS) {}
+		trunkHeight({constexprMax(trunkHeight.lowerBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound) + constexprMax(leavesAboveTrunk.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound) - 1, constexprMin(trunkHeight.upperBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.upperBound) + constexprMin(leavesAboveTrunk.upperBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.upperBound) - 1}, IntInclusiveRange(SpruceAttributes::TRUNK_HEIGHT_BOUNDS.lowerBound, SpruceAttributes::TRUNK_HEIGHT_BOUNDS.upperBound)),
+		logsBelowBottommostLeaves(logsBelowBottommostLeaves, IntInclusiveRange(SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.lowerBound, SpruceAttributes::LOGS_BELOW_BOTTOMMOST_LEAVES_BOUNDS.upperBound)),
+		leavesAboveTrunk({constexprMax(leavesAboveTrunk.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound) - 1, leavesAboveTrunk.upperBound - 1}, IntInclusiveRange(SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.lowerBound, SpruceAttributes::LEAVES_ABOVE_TRUNK_BOUNDS.upperBound)),
+		leavesWidestRadius(leavesWidestRadius, IntInclusiveRange(SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.lowerBound, SpruceAttributes::LEAVES_WIDEST_RADIUS_BOUNDS.upperBound)),
+		topmostLeavesRadius(topmostLeavesRadius, IntInclusiveRange(SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.lowerBound, SpruceAttributes::TOPMOST_LEAVES_RADIUS_BOUNDS.upperBound)) {}
 
 	__device__ bool canBeGeneratedBy(Random &random, const Version version) const {
 		uint32_t trunkHeight = TrunkHeight::getNextValueInRange(random, 6, 3);
