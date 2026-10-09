@@ -728,8 +728,6 @@ struct TreeChunk {
 	Biome biome;
 	int32_t populationChunkX, populationChunkZ;
 	TreeChunkPosition treePositions[16];
-	// Sorted observation index + 1; zero denotes an unobserved X/Z pair.
-	uint8_t treeIndexByCoordinates[256]{};
 	uint32_t numberOfTreePositions;
 	int32_t maxCalls, maxTreeCount, rangeOfPossibleSkips;
 	uint64_t salt;
