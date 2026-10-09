@@ -47,9 +47,14 @@ def prepare(revision, fixture, destination, workers, capacity, profile_batches, 
             f'Coordinate({t["x"]}, {t["z"]}), Biome::Forest}}' for t in trees]
     p = destination / 'Settings (MODIFY THIS).cuh'
     text = p.read_text()
-    a = text.index('__device__ constexpr InputData INPUT_DATA[] = {')
-    b = text.index('\n};', a) + 3
-    text = text[:a] + '__device__ constexpr InputData INPUT_DATA[] = {\n' + ',\n'.join(rows) + '\n};' + text[b:]
+    runtime_input = (destination / 'src/Observation Input.cuh').exists()
+    if runtime_input:
+        (destination / 'observations.txt').write_text(''.join(
+            f'1.16.1 Forest {t["type"]} {t["x"]} {t["z"]} 0 0 ????????????\n' for t in trees))
+    else:
+        a = text.index('__device__ constexpr InputData INPUT_DATA[] = {')
+        b = text.index('\n};', a) + 3
+        text = text[:a] + '__device__ constexpr InputData INPUT_DATA[] = {\n' + ',\n'.join(rows) + '\n};' + text[b:]
     text = text.replace('NUMBER_OF_WORKERS = 4294967296;', f'NUMBER_OF_WORKERS = {workers};')
     text = text.replace('MAX_NUMBER_OF_RESULTS_PER_RUN = AUTO;', f'MAX_NUMBER_OF_RESULTS_PER_RUN = {capacity};')
     text = text.replace('PRINT_TIMESTAMPS_FREQUENCY = 256;', 'PRINT_TIMESTAMPS_FREQUENCY = 1;')
@@ -88,7 +93,8 @@ def prepare(revision, fixture, destination, workers, capacity, profile_batches, 
         end = main_source.index('#else', begin)
         launch = main_source[begin:end].strip()
         assert 'filter1<<<' in launch
-        test_source = (ROOT / 'tests/positive_windows.cu').read_text()
+        test_source = ((destination / 'tests/positive_windows.cu').read_text() if runtime_input else
+                       subprocess.check_output(['git', 'show', 'a69f236:tests/positive_windows.cu'], cwd=ROOT, text=True))
         assert test_source.count('// FILTER1_LAUNCH_FROM_MAIN') == 1
         test_source = test_source.replace('// FILTER1_LAUNCH_FROM_MAIN', launch)
         begin = main_source.index('// Treechunk filter (States able to generate')
@@ -173,6 +179,8 @@ def main():
                 start = time.monotonic()
                 with (target / f'run-{repeat}.log').open('w') as log:
                     run_args = [str(target / 'main')]
+                    if (target / 'observations.txt').exists():
+                        run_args.append(str(target / 'observations.txt'))
                     if args.positive_window:
                         run_args.append(fixture['validation_only']['structure_seed'])
                     proc = subprocess.Popen(run_args, cwd=target, env=env,
