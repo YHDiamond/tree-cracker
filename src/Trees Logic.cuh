@@ -218,27 +218,24 @@ struct SetOfLeafStates {
 		}
 	}
 
-	// Given a Random instance and a specified version, returns whether the Random instance would generate the stored set of leaf states.
-	// If true, Random will be advanced 16 times; otherwise Random will not be changed.
+	template<int64_t N>
+	__device__ static uint32_t sampleFourCorners(const Random &random) noexcept {
+		return Random(random).nextInt<N>(2) |
+			(Random(random).nextInt<N + 1>(2) << 1) |
+			(Random(random).nextInt<N + 2>(2) << 2) |
+			(Random(random).nextInt<N + 3>(2) << 3);
+	}
+
+	// Test four corners together, retaining early rejection between layers.
+	// Failed tests retain the same RNG state as the individual-corner checks.
 	__device__ bool canBeGeneratedBy(Random &random, const Version version) const noexcept {
-		// Andrew: Only tested on 1.16.1
 		if (Version::v1_14_4 < version && version <= Version::v1_16_1) random.skip<2>();
-		if (((this->mask >> (16     ) & 1) && (this->mask       & 1) != Random(random).nextInt< 1>(2)) ||
-			((this->mask >> (16 +  1) & 1) && (this->mask >>  1 & 1) != Random(random).nextInt< 2>(2)) ||
-			((this->mask >> (16 +  2) & 1) && (this->mask >>  2 & 1) != Random(random).nextInt< 3>(2)) ||
-			((this->mask >> (16 +  3) & 1) && (this->mask >>  3 & 1) != Random(random).nextInt< 4>(2)) ||
-			((this->mask >> (16 +  4) & 1) && (this->mask >>  4 & 1) != Random(random).nextInt< 5>(2)) ||
-			((this->mask >> (16 +  5) & 1) && (this->mask >>  5 & 1) != Random(random).nextInt< 6>(2)) ||
-			((this->mask >> (16 +  6) & 1) && (this->mask >>  6 & 1) != Random(random).nextInt< 7>(2)) ||
-			((this->mask >> (16 +  7) & 1) && (this->mask >>  7 & 1) != Random(random).nextInt< 8>(2)) ||
-			((this->mask >> (16 +  8) & 1) && (this->mask >>  8 & 1) != Random(random).nextInt< 9>(2)) ||
-			((this->mask >> (16 +  9) & 1) && (this->mask >>  9 & 1) != Random(random).nextInt<10>(2)) ||
-			((this->mask >> (16 + 10) & 1) && (this->mask >> 10 & 1) != Random(random).nextInt<11>(2)) ||
-			((this->mask >> (16 + 11) & 1) && (this->mask >> 11 & 1) != Random(random).nextInt<12>(2)) ||
-			((this->mask >> (16 + 12) & 1) && (this->mask >> 12 & 1) != Random(random).nextInt<13>(2)) ||
-			((this->mask >> (16 + 13) & 1) && (this->mask >> 13 & 1) != Random(random).nextInt<14>(2)) ||
-			((this->mask >> (16 + 14) & 1) && (this->mask >> 14 & 1) != Random(random).nextInt<15>(2)) ||
-			((this->mask >> (16 + 15) & 1) && (this->mask >> 15 & 1) != Random(random).nextInt<16>(2))) return false;
+		const uint32_t known = this->mask >> 16;
+		if ((known & 0xf) && ((sampleFourCorners<1>(random) ^ this->mask) & known & 0xf)) return false;
+		if ((known & 0xf0) && ((sampleFourCorners<5>(random) ^ (this->mask >> 4)) & (known >> 4) & 0xf)) return false;
+		if ((known & 0xf00) && ((sampleFourCorners<9>(random) ^ (this->mask >> 8)) & (known >> 8) & 0xf)) return false;
+		if ((known & 0xf000) && ((sampleFourCorners<13>(random) ^ (this->mask >> 12)) & (known >> 12) & 0xf)) return false;
+
 		random.skip<16>();
 
 		return true;
