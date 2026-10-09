@@ -22,6 +22,40 @@ __managed__ uint64_t validationPrimaryStates[1 << 11];
 __managed__ uint32_t validationPrimaryCount = 0;
 __managed__ uint64_t validationTreechunkState = 0;
 
+// Independent individual-bit predicate for the grouped leaf implementation.
+__managed__ uint32_t validationPredicateFailures = 0;
+__device__ bool referenceLeafPredicate(Random &random, const uint32_t mask, const Version version) {
+	if (Version::v1_14_4 < version && version <= Version::v1_16_1) random.skip<2>();
+	for (uint32_t bit = 0; bit < 16; ++bit) {
+		if (!(mask & (UINT32_C(1) << (16 + bit)))) continue;
+		Random corner(random);
+		corner.skip(bit);
+		if (((mask >> bit) & 1) != corner.nextInt(2)) return false;
+	}
+	random.skip<16>();
+	return true;
+}
+
+__global__ void validateLeafPredicateAndRewind() {
+	const uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint64_t state = (UINT64_C(0xabcdef12345) + index * UINT64_C(0x123456789ab)) & LCG::MASK;
+	const Version version = static_cast<Version>(3 + (index % 4));
+	Random samples = Random::withSeed(state);
+	if (Version::v1_14_4 < version && version <= Version::v1_16_1) samples.skip<2>();
+	uint32_t placed = 0;
+	for (uint32_t bit = 0; bit < 16; ++bit) placed |= samples.nextInt(2) << bit;
+	const uint32_t known = index % 4 == 0 ? 0 : index % 4 == 1 ? (1u << ((index / 4) % 16)) : index % 4 == 2 ? 0xffff : 0xa5a5;
+	if ((index / 16) & 1) placed ^= known; // Include both matching and rejecting predicates.
+	const uint32_t mask = placed | (known << 16);
+	Random actual = Random::withSeed(state), reference(actual);
+	const bool expected = referenceLeafPredicate(reference, mask, version);
+	const bool result = SetOfLeafStates(mask).canBeGeneratedBy(actual, version);
+	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0];
+	const uint64_t rewind = (state * chunk.scanStartLCG.multiplier + chunk.scanStartLCG.addend) & LCG::MASK;
+	if (result != expected || actual.seed != reference.seed || rewind != Random::withSeed(state).skip(-chunk.maxCalls).seed)
+		atomicAdd(&validationPredicateFailures, 1u);
+}
+
 __global__ void deriveKnownPositiveStates(const uint64_t validationStructureSeed) {
 	const TreeChunk &chunk = ABSOLUTE_POPULATION_CHUNKS_DATA.treeChunks[0];
 	const uint64_t populationSeed = getPopulationSeed(validationStructureSeed,
@@ -74,6 +108,11 @@ int main(int argc, char **argv) {
 	const uint64_t expectedStructureSeed = std::strtoull(argv[2], &end, 10);
 	if (!*argv[2] || *end || expectedStructureSeed > LCG::MASK) ABORT("Expected a validation-only unsigned 48-bit structure seed.\n");
 	currentPopulationChunkDataIndex = 0;
+	validateLeafPredicateAndRewind<<<16, 256>>>();
+	TRY_CUDA(cudaGetLastError());
+	TRY_CUDA(cudaDeviceSynchronize());
+	if (validationPredicateFailures) ABORT("UNIT_REGRESSION predicate/rewind failures=%u.\n", validationPredicateFailures);
+	std::fprintf(stderr, "UNIT_REGRESSION predicate_and_rewind cases=4096 versions=4 exact_rng_state=true\n");
 	deriveKnownPositiveStates<<<1, 1>>>(expectedStructureSeed);
 	TRY_CUDA(cudaGetLastError());
 	TRY_CUDA(cudaDeviceSynchronize());
