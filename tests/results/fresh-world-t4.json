@@ -1,0 +1,422 @@
+{
+  "version": "1.16.1",
+  "source_commit": "12b52097eb136dd32074b1435288a51df688e09a",
+  "hardware": "GPU-2891ecda-a53e-c564-6771-d543407075ff, Tesla T4, 580.82.07, 15360 MiB",
+  "input_sha256": "45aa99d50e9f4d81b452417a5a13480191835052b298eb212ad158400525d244",
+  "exhaustive": true,
+  "domain_states": 17592186044416,
+  "seed_supplied_to_solver": false,
+  "tree_count": 4,
+  "chunks": 2,
+  "exact_heights": 4,
+  "known_leaf_corners": 48,
+  "build_seconds": 60.60120293899945,
+  "solver_seconds": 54.03637502699985,
+  "exit_code": 0,
+  "overflow": false,
+  "candidate_set": [
+    128110318218222
+  ],
+  "validation_only": {
+    "world_seed": "-2106430615384331282",
+    "expected_low48": 128110318218222,
+    "unique_correct_seed": true,
+    "seed_used_only_after_inference": true
+  },
+  "flags": [
+    "-O3",
+    "-arch=sm_75",
+    "-Xcompiler=-mcmodel=large",
+    "-Xlinker=--no-relax",
+    "--cudart=shared"
+  ],
+  "observations": [
+    {
+      "tree_log_row": 736,
+      "x": 7,
+      "y": 68,
+      "z": 26,
+      "type": "birch",
+      "height": 5,
+      "leaf_corners": [
+        "placed",
+        "placed",
+        "absent",
+        "absent",
+        "placed",
+        "absent",
+        "absent",
+        "absent",
+        "absent",
+        "absent",
+        "placed",
+        "placed"
+      ],
+      "leaf_corner_positions": [
+        [
+          5,
+          70,
+          24
+        ],
+        [
+          5,
+          70,
+          28
+        ],
+        [
+          9,
+          70,
+          24
+        ],
+        [
+          9,
+          70,
+          28
+        ],
+        [
+          5,
+          71,
+          24
+        ],
+        [
+          5,
+          71,
+          28
+        ],
+        [
+          9,
+          71,
+          24
+        ],
+        [
+          9,
+          71,
+          28
+        ],
+        [
+          6,
+          72,
+          25
+        ],
+        [
+          6,
+          72,
+          27
+        ],
+        [
+          8,
+          72,
+          25
+        ],
+        [
+          8,
+          72,
+          27
+        ]
+      ],
+      "known_leaf_corners": 12,
+      "estimated_bits": 23.906890595608516,
+      "chunk": [
+        0,
+        1
+      ]
+    },
+    {
+      "tree_log_row": 738,
+      "x": 4,
+      "y": 68,
+      "z": 19,
+      "type": "birch",
+      "height": 6,
+      "leaf_corners": [
+        "absent",
+        "placed",
+        "placed",
+        "absent",
+        "placed",
+        "placed",
+        "placed",
+        "absent",
+        "placed",
+        "absent",
+        "placed",
+        "absent"
+      ],
+      "leaf_corner_positions": [
+        [
+          2,
+          71,
+          17
+        ],
+        [
+          2,
+          71,
+          21
+        ],
+        [
+          6,
+          71,
+          17
+        ],
+        [
+          6,
+          71,
+          21
+        ],
+        [
+          2,
+          72,
+          17
+        ],
+        [
+          2,
+          72,
+          21
+        ],
+        [
+          6,
+          72,
+          17
+        ],
+        [
+          6,
+          72,
+          21
+        ],
+        [
+          3,
+          73,
+          18
+        ],
+        [
+          3,
+          73,
+          20
+        ],
+        [
+          5,
+          73,
+          18
+        ],
+        [
+          5,
+          73,
+          20
+        ]
+      ],
+      "known_leaf_corners": 12,
+      "estimated_bits": 23.906890595608516,
+      "chunk": [
+        0,
+        1
+      ]
+    },
+    {
+      "tree_log_row": 739,
+      "x": 15,
+      "y": 66,
+      "z": 24,
+      "type": "birch",
+      "height": 7,
+      "leaf_corners": [
+        "absent",
+        "placed",
+        "absent",
+        "placed",
+        "absent",
+        "placed",
+        "placed",
+        "absent",
+        "placed",
+        "placed",
+        "placed",
+        "absent"
+      ],
+      "leaf_corner_positions": [
+        [
+          13,
+          70,
+          22
+        ],
+        [
+          13,
+          70,
+          26
+        ],
+        [
+          17,
+          70,
+          22
+        ],
+        [
+          17,
+          70,
+          26
+        ],
+        [
+          13,
+          71,
+          22
+        ],
+        [
+          13,
+          71,
+          26
+        ],
+        [
+          17,
+          71,
+          22
+        ],
+        [
+          17,
+          71,
+          26
+        ],
+        [
+          14,
+          72,
+          23
+        ],
+        [
+          14,
+          72,
+          25
+        ],
+        [
+          16,
+          72,
+          23
+        ],
+        [
+          16,
+          72,
+          25
+        ]
+      ],
+      "known_leaf_corners": 12,
+      "estimated_bits": 23.906890595608516,
+      "chunk": [
+        0,
+        1
+      ]
+    },
+    {
+      "tree_log_row": 571,
+      "x": 9,
+      "y": 67,
+      "z": 35,
+      "type": "birch",
+      "height": 7,
+      "leaf_corners": [
+        "placed",
+        "absent",
+        "placed",
+        "placed",
+        "placed",
+        "absent",
+        "absent",
+        "placed",
+        "absent",
+        "absent",
+        "absent",
+        "absent"
+      ],
+      "leaf_corner_positions": [
+        [
+          7,
+          71,
+          33
+        ],
+        [
+          7,
+          71,
+          37
+        ],
+        [
+          11,
+          71,
+          33
+        ],
+        [
+          11,
+          71,
+          37
+        ],
+        [
+          7,
+          72,
+          33
+        ],
+        [
+          7,
+          72,
+          37
+        ],
+        [
+          11,
+          72,
+          33
+        ],
+        [
+          11,
+          72,
+          37
+        ],
+        [
+          8,
+          73,
+          34
+        ],
+        [
+          8,
+          73,
+          36
+        ],
+        [
+          10,
+          73,
+          34
+        ],
+        [
+          10,
+          73,
+          36
+        ]
+      ],
+      "known_leaf_corners": 12,
+      "estimated_bits": 23.906890595608516,
+      "chunk": [
+        0,
+        2
+      ]
+    }
+  ],
+  "collection": {
+    "method": "Existing unmodified vanilla Java 1.16.1 recording agent, new SecureRandom.nextLong world; tree geometry and leaf corners read from development instrumentation and saved blocks",
+    "record_path": "/home/judah/dev/mcslam/data/dev/tree-cracker-fresh-20261009/dev/dev-01",
+    "data_version": 2567,
+    "forest_biome_id": 4,
+    "eligible_normal_forest_trees": 569,
+    "tree_chunks_examined": 95,
+    "world_seed_used_for_selection": false,
+    "seed_search_restricted": false,
+    "all_16_partitions_completed": true,
+    "primary_chunk_pre_secondary_filter_candidates": 6,
+    "secondary_tree_resolved_to_unique_seed": true,
+    "heights": [
+      5,
+      6,
+      7,
+      7
+    ],
+    "leaf_order": "lowest to highest layers, Northwest Southwest Northeast Southeast",
+    "leaf_unknown_policy": "Other final material or ambiguous leaf attribution is unknown; all 48 selected corners were known",
+    "absolute_minimum_tree_count_tested": false
+  },
+  "notebook": "https://colab.research.google.com/drive/1Wv5HdU7Ez0_BfA0L5xdGsCmhQxJkI0g4#scrollTo=HZC9JyCJksO8",
+  "evidence_cells": {
+    "exhaustive_run": "uRTltZpAkDOk",
+    "post_inference_verification": "HZC9JyCJksO8"
+  }
+}

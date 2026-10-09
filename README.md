@@ -125,6 +125,23 @@ nvcc main.cu -o main -O3 -arch=sm_75 -Xcompiler=-mcmodel=large -Xlinker=--no-rel
 LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:-} ./main
 ```
 
+## Fresh vanilla 1.16.1 world recovery
+
+A new, unrestricted random vanilla Java 1.16.1 world was generated on October 9, 2026 with the existing recorder. The standalone optimized solver received tree observations only, with no known seed or restricted validation window. Its complete 2^44-state absolute-coordinate search took **54.036 s** on the same allocated T4 used above and returned exactly one structure seed, **128110318218222**. The separate compilation took **60.601 s**. The candidate equals the lower 48 bits of the new world's validation-only world seed, `-2106430615384331282`. This is one measured full run.
+
+The input used **four birch trees across two verified Forest chunks**, with exact absolute X/Z, exact trunk heights, and all twelve corner-leaf states per tree (**48 corner states**):
+
+| Tree | X | Z | Trunk height | Population chunk |
+|---|---:|---:|---:|---|
+| Birch | 7 | 26 | 5 | (0, 1) |
+| Birch | 4 | 19 | 6 | (0, 1) |
+| Birch | 15 | 24 | 7 | (0, 1) |
+| Birch | 9 | 35 | 7 | (0, 2) |
+
+The first three trees produced six structure-seed candidates; the fourth tree in the neighboring chunk reduced these to one. Four trees were sufficient for this input; the absolute minimum was not tested. These observations were collected directly from the generated world, so this measurement excludes video extraction and data collection time. No blind records were read.
+
+The exact observations are saved in [the input array](Test%20Data/fresh-16-1-20261009.cuh), with hardware, compile flags, input hash, seed verification and per-tree details in [the measurement](tests/results/fresh-world-t4.json) and all sixteen partitions in [the run log](tests/results/fresh-world-t4.log). To reproduce, replace the placeholder `INPUT_DATA` array in the Settings file with the contents of that input array, retain the default full-domain settings, and compile/run with the Linux/Colab commands above. The measured source revision is `12b52097eb136dd32074b1435288a51df688e09a`.
+
 ## Acknowledgements
 I would like to give very large Thank You's to
 - [Andrew](https://github.com/Gaider10), for creating the [original version of the TreeCracker](https://github.com/Gaider10/TreeCracker) (alongside much of the test data) and a [population chunk reverser](https://github.com/Gaider10/PopulationCrr), and for answering a question about his tool.
